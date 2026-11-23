@@ -12,7 +12,7 @@ optim:
   epochs: 1
   batch_size: 16
   grad_accum: 1
-  eval_batch_size: 32
+  eval_batch_size: 16
   lr: 2.0e-4
   weight_decay: 0.0
   warmup_ratio: 0.06

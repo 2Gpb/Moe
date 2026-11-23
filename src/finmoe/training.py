@@ -59,9 +59,18 @@ def peak_memory_gb(device: torch.device) -> float:
     return float("nan")
 
 
+def release_cache(device: torch.device) -> None:
+    # batches have different lengths, so the MPS/CUDA caching allocators keep growing otherwise
+    if device.type == "mps":
+        torch.mps.empty_cache()
+    elif device.type == "cuda":
+        torch.cuda.empty_cache()
+
+
 def evaluate_split(head, rows, collator, batch_size, recorder=None, desc="eval"):
     loader = DataLoader(rows, batch_size=batch_size, shuffle=False, collate_fn=collator)
     records, seconds = predict(head, loader, recorder=recorder, desc=desc)
+    release_cache(head.model.lm_head.weight.device)
     return records, compute_metrics(records), seconds
 
 
@@ -129,6 +138,7 @@ def train(cfg: dict, run_dir: Path) -> dict:
             step += 1
 
             if step % optim.get("log_every", 20) == 0:
+                release_cache(device)
                 entry = {"step": step, "loss": loss.item(), "aux": aux.item(), "grad_norm": float(grad_norm),
                          "lr": optimizer.param_groups[0]["lr"], "elapsed": time.perf_counter() - t0}
                 log.write(json.dumps(entry) + "\n")
