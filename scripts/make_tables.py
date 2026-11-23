@@ -26,6 +26,7 @@ METHODS = {
     "lora_experts": "LoRA-Experts (r=8)",
     "esft_token": "ESFT-Token",
     "esft_gate": "ESFT-Gate",
+    "esft_specific": "ESFT-Specific (ours)",
     "esft_random": "ESFT-Random (ctrl)",
     "esft_least": "ESFT-Least (ctrl)",
     "dense_lora_attn": "Dense Qwen2.5-0.5B LoRA-Attn",

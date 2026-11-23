@@ -37,7 +37,7 @@ FAMILY = {
 METHOD_FAMILY = {
     "base_0shot": "baseline", "base_2shot": "baseline", "router": "router", "router_aux": "router",
     "lora_attn": "lora_attn", "lora_attn_router": "lora_attn", "lora_experts": "lora_experts",
-    "lora_experts_r1": "lora_experts", "esft_token": "esft", "esft_gate": "esft",
+    "lora_experts_r1": "lora_experts", "esft_token": "esft", "esft_gate": "esft", "esft_specific": "esft",
     "esft_random": "control", "esft_least": "control", "dense_lora_attn": "dense",
 }
 DIVERGING = LinearSegmentedColormap.from_list("div", ["#d95926", "#f3f2ee", "#2a78d6"])
@@ -146,7 +146,7 @@ def fig_routing_shift():
 
 def fig_training_curves():
     fig, ax = plt.subplots(figsize=(3.4, 2.4))
-    for method in ["router", "lora_attn", "lora_experts", "esft_token", "esft_random"]:
+    for method in ["router", "lora_attn", "lora_experts", "esft_token", "esft_specific", "esft_random"]:
         path = Path(f"results/runs/{method}_s0/log.jsonl")
         if not path.exists():
             continue
