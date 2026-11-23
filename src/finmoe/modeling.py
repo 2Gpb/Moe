@@ -21,8 +21,9 @@ def pick_device(requested: str = "auto") -> torch.device:
 def pick_dtype(device: torch.device, requested: str = "auto") -> torch.dtype:
     if requested != "auto":
         return getattr(torch, requested)
-    if device.type == "cuda" and not torch.cuda.is_bf16_supported():
-        return torch.float16  # e.g. T4 on Kaggle / Colab
+    if device.type == "cuda" and torch.cuda.get_device_capability(device)[0] < 8:
+        # pre-Ampere GPUs (T4, P100) only emulate bf16, which is very slow
+        return torch.float16
     if device.type == "cpu":
         return torch.float32
     return torch.bfloat16
