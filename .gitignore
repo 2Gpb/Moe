@@ -10,7 +10,7 @@ checkpoints/
 runs/
 wandb/
 *.safetensors
-*.pt
+adapter.pt
 
 report/*.aux
 report/*.log
@@ -18,3 +18,4 @@ report/*.out
 report/*.bbl
 report/*.blg
 report/*.synctex.gz
+*.log
