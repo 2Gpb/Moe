@@ -18,7 +18,7 @@ def predict(head: VerbalizerHead, loader: DataLoader, recorder=None, desc: str =
     head.model.eval()
     records = []
     start = time.perf_counter()
-    for batch in tqdm(loader, desc=desc, leave=False):
+    for batch in tqdm(loader, desc=desc, leave=False, disable=None):
         if recorder is not None:
             recorder.token_mask = batch["attention_mask"].flatten().bool()
         logits = head(batch)
