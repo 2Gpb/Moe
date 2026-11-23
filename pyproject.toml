@@ -3,10 +3,10 @@ name = "finmoe"
 version = "0.1.0"
 description = "Parameter-efficient domain adaptation of Mixture-of-Experts language models for financial NLP"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "torch>=2.6",
-    "transformers>=5.0",
+    "transformers>=5.24,<5.25",
     "datasets>=3.0",
     "accelerate>=1.0",
     "scikit-learn>=1.5",

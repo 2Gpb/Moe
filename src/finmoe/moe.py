@@ -60,6 +60,18 @@ def _is_adapted(module: nn.Module) -> bool:
     return hasattr(module, "base") and _is_experts(module.base)
 
 
+def unpack_router_output(output: tuple, num_experts: int) -> tuple[torch.Tensor, torch.Tensor]:
+    """Returns (router_logits [N, E], top_k_index [N, k]).
+
+    The order of the router outputs changed between transformers releases
+    (5.20 returns index first, 5.24 logits first), so the tensors are told
+    apart by their content: the index tensor is integer, the logits have E columns.
+    """
+    index = next(t for t in output if not t.is_floating_point())
+    logits = next(t for t in output if t.is_floating_point() and t.shape[-1] == num_experts)
+    return logits, index
+
+
 class RoutingRecorder:
     """Accumulates per-layer routing statistics through forward hooks on the routers.
 
@@ -81,8 +93,10 @@ class RoutingRecorder:
         self.tokens = 0
 
     def _hook(self, idx: int):
+        n_exp = self.layers[idx].num_experts
+
         def hook(module, inputs, output):
-            logits, _, top_idx = output
+            logits, top_idx = unpack_router_output(output, n_exp)
             with torch.no_grad():
                 if self.token_mask is not None:
                     mask = self.token_mask.to(logits.device)

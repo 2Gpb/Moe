@@ -89,3 +89,12 @@ def test_routing_recorder_respects_mask(tiny_model):
     torch.testing.assert_close(s["selection_ratio"].sum(-1), torch.ones(2, dtype=torch.float64))
     torch.testing.assert_close(s["mean_prob"].sum(-1), torch.ones(2, dtype=torch.float64))
 
+
+
+def test_router_output_order_does_not_matter():
+    from finmoe.moe import unpack_router_output
+
+    logits, weights, index = torch.randn(5, 6), torch.rand(5, 2), torch.randint(0, 6, (5, 2))
+    for output in ((logits, weights, index), (index, weights, logits)):
+        got_logits, got_index = unpack_router_output(output, num_experts=6)
+        assert got_logits is logits and got_index is index
