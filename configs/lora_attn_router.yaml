@@ -1,0 +1,5 @@
+base: lora_attn.yaml
+optim:
+  lr_overrides: {router: 5.0e-4}
+adapt:
+  router: true

@@ -1,0 +1,6 @@
+# ESFT-Token: experts ranked by how often the router selects them on financial training data
+base: base.yaml
+optim:
+  lr: 3.0e-5
+adapt:
+  esft: {stats: results/routing/esft_stats.pt, score: selection_ratio, threshold: 0.2, control: none}

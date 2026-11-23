@@ -1,0 +1,5 @@
+base: base.yaml
+optim:
+  lr: 5.0e-4
+adapt:
+  router: true

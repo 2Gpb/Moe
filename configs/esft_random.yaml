@@ -1,0 +1,4 @@
+# control: same number of experts per layer as ESFT-Token, chosen uniformly at random
+base: esft_token.yaml
+adapt:
+  esft: {control: random}

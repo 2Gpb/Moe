@@ -59,11 +59,11 @@ class AdaptedExperts(nn.Module):
             self.delta_d = nn.Parameter(torch.zeros(k, hidden, inter))
 
     def _proj(self, x: torch.Tensor, e: int, weight: torch.Tensor, delta, lora_a, lora_b) -> torch.Tensor:
-        w = weight[e]
+        y = x @ weight[e].t()
         d = self.delta_slot.get(e)
         if d is not None:
-            w = w + delta[d].to(w.dtype)
-        y = x @ w.t()
+            # the delta stays in fp32: adding it to a bf16 weight first would round small updates away
+            y = y + (x.to(delta.dtype) @ delta[d].t()).to(y.dtype)
         l = self.lora_slot.get(e)
         if l is not None:
             xf = x.to(lora_a.dtype)

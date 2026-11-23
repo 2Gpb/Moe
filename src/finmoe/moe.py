@@ -38,7 +38,7 @@ def _is_experts(module: nn.Module) -> bool:
     )
 
 
-def find_moe_layers(model: nn.Module) -> list[MoELayer]:
+def find_moe_layers(model: nn.Module, required: bool = True) -> list[MoELayer]:
     layers = []
     for block in model.modules():
         experts_name = next((n for n, m in block.named_children() if _is_experts(m) or _is_adapted(m)), None)
@@ -51,7 +51,7 @@ def find_moe_layers(model: nn.Module) -> list[MoELayer]:
         if router is None:
             continue
         layers.append(MoELayer(len(layers), block, router, getattr(block, experts_name), experts_name))
-    if not layers:
+    if not layers and required:
         raise ValueError("no sparse MoE blocks found in the model")
     return layers
 

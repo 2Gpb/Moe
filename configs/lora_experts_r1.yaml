@@ -1,0 +1,4 @@
+# same trainable budget as attention LoRA r=16 (~2.7M parameters)
+base: base.yaml
+adapt:
+  expert_lora: {rank: 1, alpha: 2}
