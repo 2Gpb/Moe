@@ -75,6 +75,9 @@ class Collator:
         self.tok = tokenizer
         self.max_length = max_length
         self.demos = demos or {}
+        # pad with an ordinary token, not <|endoftext|>: in Granite it gets huge
+        # activations, padded positions overflow in fp16 and the gradients become NaN
+        self.pad_id = tokenizer(" .", add_special_tokens=False)["input_ids"][-1]
 
     def prompt(self, row: dict) -> str:
         task = TASKS[row["task"]]
@@ -89,8 +92,7 @@ class Collator:
         enc = [self.tok(p, add_special_tokens=False)["input_ids"] for p in prompts]
         enc = [ids[-self.max_length:] for ids in enc]
         length = max(len(ids) for ids in enc)
-        pad = self.tok.pad_token_id if self.tok.pad_token_id is not None else 0
-        input_ids = torch.full((len(enc), length), pad, dtype=torch.long)
+        input_ids = torch.full((len(enc), length), self.pad_id, dtype=torch.long)
         attention_mask = torch.zeros((len(enc), length), dtype=torch.long)
         for i, ids in enumerate(enc):
             input_ids[i, : len(ids)] = torch.tensor(ids)

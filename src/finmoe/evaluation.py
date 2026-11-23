@@ -23,6 +23,8 @@ def predict(head: VerbalizerHead, loader: DataLoader, recorder=None, desc: str =
             recorder.token_mask = batch["attention_mask"].flatten().bool()
         logits = head(batch)
         probs = logits.softmax(-1).cpu()
+        if not torch.isfinite(probs).all():
+            raise RuntimeError("non-finite logits, the model or adapter is broken")
         for i, task in enumerate(batch["tasks"]):
             records.append(
                 {

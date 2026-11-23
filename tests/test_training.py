@@ -69,3 +69,20 @@ def test_train_and_reload(tiny_dir, tmp_path, adapt):
     params = dict(model.named_parameters())
     for name, value in saved.items():
         torch.testing.assert_close(params[name].detach(), value)
+
+
+def test_padding_does_not_change_logits(tiny_dir):
+    from finmoe.data import Collator
+    from finmoe.modeling import VerbalizerHead
+
+    tok = AutoTokenizer.from_pretrained(tiny_dir / "model")
+    model = GraniteMoeForCausalLM.from_pretrained(tiny_dir / "model").eval()
+    head = VerbalizerHead(model, tok)
+    collate = Collator(tok, max_length=64)
+    short = {"task": "fpb", "text": "profit rose", "label": 2}
+    long = {"task": "fpb", "text": "operating profit rose sharply compared with the same quarter last year", "label": 2}
+    assert collate.pad_id != tok.eos_token_id
+    with torch.no_grad():
+        alone = head(collate([short]))
+        padded = head(collate([short, long]))[:1]
+    torch.testing.assert_close(alone, padded, atol=1e-5, rtol=1e-4)
