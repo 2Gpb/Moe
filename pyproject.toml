@@ -23,6 +23,8 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "ipykernel>=6.29",
+    "nbconvert>=7.17.2",
+    "nbformat>=5.11.1",
 ]
 
 [build-system]
