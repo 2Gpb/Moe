@@ -102,7 +102,6 @@ def train(cfg: dict, run_dir: Path) -> dict:
     eval_every = optim.get("eval_every", max(1, total_steps // 2))
     log = open(run_dir / "log.jsonl", "w")
     best = {"score": -1.0, "step": -1}
-    best_state = None
     step, t0 = 0, time.perf_counter()
     print(f"trainable {trainable:,} / {total:,} params ({100 * trainable / total:.3f}%), {total_steps} steps", flush=True)
 
@@ -147,15 +146,16 @@ def train(cfg: dict, run_dir: Path) -> dict:
                 log.flush()
                 print(f"step {step} val macro-F1 {score:.4f}", flush=True)
                 if score > best["score"]:
+                    # only the trainable tensors are saved, the frozen backbone is reloaded from the hub
                     best = {"score": score, "step": step, "val": metrics}
-                    best_state = adapter_state_dict(model)
+                    torch.save(adapter_state_dict(model), run_dir / "adapter.pt")
                 model.train()
 
     train_seconds = time.perf_counter() - t0
     if recorder is not None:
         recorder.remove()
-    torch.save(best_state, run_dir / "adapter.pt")
-    model.load_state_dict({k: v.to(device) for k, v in best_state.items()}, strict=False)
+    best_state = torch.load(run_dir / "adapter.pt", map_location=device)
+    model.load_state_dict(best_state, strict=False)
     summary = test_and_profile(cfg, model, head, collator, run_dir)
     summary.update({
         "trainable_params": trainable,

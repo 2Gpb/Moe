@@ -96,9 +96,9 @@ class RoutingRecorder:
                     mask = self.token_mask.to(logits.device)
                     logits, top_idx = logits[mask], top_idx[mask]
                 p = logits.float().softmax(-1)
-                self.probs[idx] += p.sum(0).double().cpu()
-                self.entropy[idx] += (-(p * p.clamp_min(1e-12).log()).sum(-1)).sum().double().cpu()
-                self.counts[idx] += torch.bincount(top_idx.flatten(), minlength=p.shape[-1]).double().cpu()
+                self.probs[idx] += p.sum(0).cpu().double()
+                self.entropy[idx] += (-(p * p.clamp_min(1e-12).log()).sum(-1)).sum().cpu().double()
+                self.counts[idx] += torch.bincount(top_idx.flatten(), minlength=p.shape[-1]).cpu().double()
                 if idx == 0:
                     self.tokens += logits.shape[0]
 
