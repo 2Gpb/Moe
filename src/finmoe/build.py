@@ -23,7 +23,7 @@ from torch import nn
 from finmoe.adapters import wrap_experts
 from finmoe.modeling import load_model
 from finmoe.moe import find_moe_layers
-from finmoe.selection import select_by_threshold, select_least_used_like, select_random_like
+from finmoe.selection import select_by_threshold, select_least_used_like, select_random_like, select_specific_like
 
 
 class LoRALinear(nn.Module):
@@ -65,6 +65,8 @@ def resolve_esft_experts(esft: dict, num_experts: int, seed: int) -> dict[int, l
         chosen = select_random_like(chosen, num_experts, seed)
     elif control == "least_used":
         chosen = select_least_used_like(chosen, scores)
+    elif control == "domain_specific":
+        chosen = select_specific_like(chosen, stats["selection_ratio"], stats["general_selection_ratio"])
     return chosen
 
 

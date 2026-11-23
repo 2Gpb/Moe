@@ -1,0 +1,4 @@
+# same expert budget as ESFT-Token, experts ranked by log(p_fin / p_general) instead of raw usage
+base: esft_token.yaml
+adapt:
+  esft: {control: domain_specific}

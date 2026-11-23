@@ -78,6 +78,8 @@ def main():
             key: sum(w * per_task[t][key] for w, t in zip(weights, FIN_TASKS))
             for key in ("selection_ratio", "mean_prob")
         }
+        # general-domain reference for the domain-specificity criterion
+        stats["general_selection_ratio"] = per_task["sst2"]["selection_ratio"]
         torch.save(stats, out / "esft_stats.pt")
         print(f"saved ESFT relevance scores to {out / 'esft_stats.pt'}")
 

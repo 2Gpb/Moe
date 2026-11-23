@@ -36,6 +36,15 @@ def select_least_used_like(reference: dict[int, list[int]], scores: torch.Tensor
     }
 
 
+def select_specific_like(reference: dict[int, list[int]], fin: torch.Tensor, general: torch.Tensor) -> dict[int, list[int]]:
+    """Same budget, but rank experts by how much more the domain uses them than general text."""
+    spec = domain_specificity(fin, general)
+    return {
+        layer: sorted(torch.argsort(spec[layer], descending=True)[: len(experts)].tolist())
+        for layer, experts in reference.items()
+    }
+
+
 def domain_specificity(fin: torch.Tensor, general: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
     """log-ratio of how often an expert is chosen on financial vs general text."""
     return torch.log((fin + eps) / (general + eps))
