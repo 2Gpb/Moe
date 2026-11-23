@@ -1,0 +1,79 @@
+\section{Method}
+
+\subsection{Sparse MoE block}
+In every layer $\ell$ of the model the feed-forward block is replaced by $E$ experts. For a token
+representation $x\in\mathbb{R}^{d}$ the router computes logits $r = W_r x$, $W_r\in\mathbb{R}^{E\times d}$,
+keeps the top-$k$ experts $\mathcal{T}(x)$ and renormalises their scores:
+\begin{equation}
+  y = \sum_{e\in\mathcal{T}(x)} g_e(x)\, f_e(x),\quad
+  g_e(x) = \frac{\exp r_e}{\sum_{j\in\mathcal{T}(x)} \exp r_j},
+\end{equation}
+where each expert is a gated MLP $f_e(x) = D_e\,[\,\mathrm{SiLU}(G_e x)\odot U_e x\,]$ with
+$G_e,U_e\in\mathbb{R}^{m\times d}$ and $D_e\in\mathbb{R}^{d\times m}$. In current Hugging Face
+implementations all experts of a layer are stored in two tensors,
+$[G;U]\in\mathbb{R}^{E\times 2m\times d}$ and $D\in\mathbb{R}^{E\times d\times m}$, so expert
+parameters are not \texttt{nn.Linear} modules and off-the-shelf LoRA libraries cannot target
+them directly.
+
+\subsection{Classification with the language-model head}
+All tasks are cast as next-token prediction. An instruction, the input text and the cue
+\texttt{Answer:} form the prompt; each class $c$ is mapped to one verbalizer token
+$v_c$ (\texttt{negative}/\texttt{neutral}/\texttt{positive} or \texttt{No}/\texttt{Yes})~\cite{schick2021pet}.
+With $h$ the final hidden state at the last prompt position and $W_o$ the output embedding,
+\begin{equation}
+  p(c\mid \text{prompt}) = \operatorname{softmax}_{c}\big( W_o[v_c]^{\top} h \big),
+\end{equation}
+and training minimises the cross-entropy of this restricted distribution. The same scoring is
+used for zero-shot, few-shot and fine-tuned models, so differences come only from the
+parameters. Only the last position is projected onto the vocabulary, which avoids
+materialising a $B\times L\times|V|$ logit tensor.
+
+\subsection{Where to place the trainable parameters}
+All methods keep the pre-trained weights frozen and differ only in which tensors are trained.
+
+\textbf{Attention LoRA.} Each of $W_q,W_k,W_v,W_o$ becomes $W + \frac{\alpha}{r}BA$ with
+$A\in\mathbb{R}^{r\times d_\text{in}}$, $B\in\mathbb{R}^{d_\text{out}\times r}$, $B=0$ at initialisation~\cite{hu2022lora}.
+
+\textbf{Expert LoRA.} Every expert receives its own low-rank update on both projections,
+$[G;U]_e + \frac{\alpha}{r}B^{gu}_e A^{gu}_e$ and $D_e + \frac{\alpha}{r}B^{d}_e A^{d}_e$.
+The adapters are stored as 3D tensors aligned with the expert dimension. With rank $r=1$ the
+number of trainable parameters (2.75M) matches attention LoRA with $r=16$, which gives a
+budget-matched comparison of \emph{attention vs.\ experts}.
+
+\textbf{Router tuning.} Only $W_r$ of every layer is trained (0.79M parameters). Changing the
+router does not change what an expert computes, only which experts are used and with what
+weight. We train it with and without the Switch load-balancing loss
+$\mathcal{L}_\text{LB} = E\sum_e f_e P_e$~\cite{fedus2022switch}, where $f_e$ is the fraction
+of routing slots assigned to expert $e$ and $P_e$ its mean router probability.
+
+\textbf{ESFT.} Following~\cite{wang2024esft}, we run the frozen model over the financial
+training data and compute, for every layer and expert, a relevance score:
+the token selection ratio $s^\text{tok}_{\ell,e} = \frac{1}{kN}\sum_{t} \mathbb{1}[e\in\mathcal{T}(x_t)]$
+(ESFT-Token) or the average router probability $s^\text{gate}_{\ell,e} = \frac{1}{N}\sum_t \operatorname{softmax}(r_t)_e$ (ESFT-Gate).
+In each layer the smallest set of experts whose cumulative score reaches $p=0.2$ is selected,
+and only those experts are updated with full-rank deltas $\Delta_e$ initialised at zero.
+Padding positions are excluded from the statistics. The deltas are kept in fp32 and applied as
+a separate product $x\Delta_e^\top$; adding them to a bf16 weight first would round small
+updates away.
+
+\textbf{ESFT-Specific.} Our routing analysis (Section~\ref{sec:routing}) shows that the experts
+with the highest usage are used heavily on any text. We therefore also rank experts by domain
+specificity, the log-ratio of their selection ratio on financial and general-domain text,
+\begin{equation}
+  \sigma_{\ell,e} = \log \frac{s^\text{tok}_{\ell,e}(\text{fin})}{s^\text{tok}_{\ell,e}(\text{general})},
+\end{equation}
+and select, in every layer, the same number of experts as ESFT-Token but with the largest
+$\sigma$. General-domain statistics come from SST-2~\cite{socher2013sst} sentences, i.e.\ the
+same task (sentiment) in a different domain, so $\sigma$ isolates the domain rather than the task.
+
+\textbf{Controls.} To test whether the \emph{choice} of experts matters, ESFT-Random updates
+the same number of experts per layer chosen uniformly at random, and ESFT-Least spends the
+budget on the experts with the lowest selection ratio.
+
+\subsection{Implementation}
+The adapted experts module sorts the $kN$ (token, expert) pairs by expert, lets every expert
+process its contiguous slice, and scatters the weighted outputs back. This is the grouped-GEMM
+pattern written as a plain loop, so the same code runs on CUDA, Apple MPS and CPU and works for
+any model with the router/experts layout above (Granite-MoE, OLMoE, Qwen-MoE, Mixtral).
+Without adapters the module reproduces the original forward pass to $10^{-5}$, which is
+checked by unit tests together with gradient flow and parameter counts.

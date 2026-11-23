@@ -19,3 +19,4 @@ report/*.bbl
 report/*.blg
 report/*.synctex.gz
 *.log
+notes/

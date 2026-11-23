@@ -1,0 +1,43 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\newcommand{\fpb}{FPB}
+\newcommand{\fiqa}{FiQA-SA}
+\newcommand{\tfns}{TFNS}
+
+\begin{document}
+
+\title{Where to Spend the Parameters? Parameter-Efficient Domain Adaptation of Mixture-of-Experts Language Models for Financial NLP}
+
+\author{\IEEEauthorblockN{Petr Tyukhmenev}
+\IEEEauthorblockA{Deep Learning course project}}
+
+\maketitle
+
+\begin{abstract}
+\input{sections/abstract}
+\end{abstract}
+
+\begin{IEEEkeywords}
+mixture of experts, parameter-efficient fine-tuning, LoRA, domain adaptation, financial sentiment analysis
+\end{IEEEkeywords}
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/method}
+\input{sections/setup}
+\input{sections/results}
+\input{sections/discussion}
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

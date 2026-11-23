@@ -1,0 +1,41 @@
+\section{Introduction}
+
+Sparse Mixture-of-Experts (MoE) transformers replace the dense feed-forward block with a set
+of experts and a learned router that sends every token to a few of them~\cite{shazeer2017moe,fedus2022switch}.
+The design decouples the number of stored parameters from the compute spent per token and is
+now used in many open models~\cite{jiang2024mixtral,dai2024deepseekmoe,muennighoff2024olmoe,granite2024}.
+Adapting such models to a specialised domain raises a question that does not exist for dense
+networks: the parameters live in structurally different places (shared attention, many
+conditionally used experts, and a small router that decides which experts are used), and a
+limited budget of trainable parameters can be placed in any of them.
+
+Standard parameter-efficient fine-tuning (PEFT) methods such as LoRA~\cite{hu2022lora} were
+designed for dense models and are typically attached to the attention projections. For MoE
+models, Wang et al.~\cite{wang2024esft} proposed Expert-Specialized Fine-Tuning (ESFT): routing
+statistics on the target data identify the experts that the task already relies on, and only
+those experts are updated. Whether this transfers to a small MoE model and to a domain shift
+(rather than a task shift), and how it compares with LoRA in the experts or a re-trained
+router at matched budgets, is the subject of this project.
+
+We use financial text classification as the target domain. Financial sentiment differs from
+everyday sentiment in a way that is easy to measure: a statement such as \emph{``the company
+will publish its interim report on 5 May''} is neutral for an investor, and \emph{``operating
+loss narrowed''} is positive although it contains the word ``loss''. A 1.3B-parameter MoE model
+that reaches 93\% on the general-domain SST-2 benchmark scores only 33--37\% macro-F1 on two
+financial sentiment datasets in our zero-shot evaluation, which makes the domain gap concrete.
+
+\textbf{Contributions.}
+\begin{itemize}
+  \item A controlled comparison of six ways to place trainable parameters in a sparse MoE
+  language model (attention LoRA, expert LoRA at two ranks, router-only tuning, attention LoRA
+  plus router, and ESFT with two relevance scores) on four financial classification tasks
+  trained jointly, with a dense model of similar active size as reference.
+  \item Control experiments that isolate the value of routing-based expert selection: the same
+  expert budget spent on random or on the least-used experts.
+  \item A routing analysis showing that financial text is routed differently from general
+  text, that usage-frequency selection (ESFT) mostly picks generic high-traffic experts, and a
+  variant, ESFT-Specific, that ranks experts by domain specificity instead.
+  \item A compact, model-agnostic implementation of expert LoRA and expert deltas on top of the
+  3D expert tensors used by current Hugging Face MoE models, released with fixed data splits
+  and configurations.
+\end{itemize}

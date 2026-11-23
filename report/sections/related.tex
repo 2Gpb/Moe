@@ -1,0 +1,29 @@
+\section{Related Work}
+
+\textbf{Sparse Mixture-of-Experts.} The sparsely-gated MoE layer~\cite{shazeer2017moe} routes
+each token to the top-$k$ of $E$ experts using a learned linear router. GShard and Switch
+Transformer~\cite{lepikhin2021gshard,fedus2022switch} scaled the idea and introduced an
+auxiliary load-balancing loss that keeps the experts uniformly used; ST-MoE~\cite{zoph2022stmoe}
+studied fine-tuning stability and found that sparse models overfit more easily on small
+downstream tasks. Recent open models use fine-grained experts (many small experts with a larger
+$k$): DeepSeekMoE~\cite{dai2024deepseekmoe}, OLMoE~\cite{muennighoff2024olmoe} and IBM
+Granite-MoE~\cite{granite2024}, which we use here. OLMoE reports domain-dependent routing,
+which is the property ESFT and our analysis build on.
+
+\textbf{Parameter-efficient fine-tuning.} Adapters~\cite{houlsby2019adapters} and
+LoRA~\cite{hu2022lora} update a small number of new parameters while the backbone stays frozen;
+QLoRA~\cite{dettmers2023qlora} combines LoRA with a quantised backbone. For MoE models,
+ESFT~\cite{wang2024esft} fine-tunes only the experts that are most relevant to the downstream
+data, measured either by the average gate score (ESFT-Gate) or by the fraction of tokens routed
+to an expert (ESFT-Token). ESFT was evaluated on a 16B-parameter model and on task-specific
+data (math, code, intent recognition, summarisation, legal judgement prediction and translation); we test it on a small model, on a domain rather than a
+single task, and against budget-matched LoRA variants and selection controls.
+
+\textbf{Financial NLP.} Financial sentiment benchmarks include Financial PhraseBank~\cite{malo2014fpb},
+FiQA~\cite{maia2018fiqa}, gold-news headlines~\cite{sinha2021headlines} and Twitter financial
+news~\cite{tfns2022}. Domain-specific models range from FinBERT~\cite{araci2019finbert}, an
+encoder with continued pre-training, to BloombergGPT~\cite{wu2023bloomberggpt}, a 50B
+decoder trained on a mixed financial and general corpus, and open instruction-tuned models
+evaluated on FLARE/FinBen~\cite{xie2023pixiu,xie2024finben,yang2023fingpt}. Continued
+pre-training is known to help domain transfer~\cite{gururangan2020dont} but is expensive; this
+project studies the cheaper alternative of supervised parameter-efficient adaptation.

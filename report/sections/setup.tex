@@ -1,0 +1,53 @@
+\section{Experimental Setup}
+
+\subsection{Data}
+Table~\ref{tab:data} lists the tasks. \fpb{}, \fiqa{} and Headlines use the FLARE
+splits~\cite{xie2023pixiu}. \tfns{} has no public test set; its official validation split is
+our test set and a stratified 10\% of the training data is held out for validation. Headlines
+asks several yes/no questions about the same headline (price up/down, past/future news, \ldots);
+we remove from training every headline that appears in validation or test, so that no headline
+is seen under a different question. The two large sources are subsampled with a fixed seed
+(Table~\ref{tab:data}); all splits are stored as files in the repository.
+SST-2~\cite{socher2013sst} (872 validation sentences) is used only as the general-domain
+reference for the routing analysis and is never trained on.
+
+\begin{table}[t]
+\centering
+\caption{Tasks and split sizes after subsampling.}
+\label{tab:data}
+\begin{tabular}{l l c r r r}
+\toprule
+Task & Source & Cls. & Train & Val & Test \\
+\midrule
+\fpb{} & news sentences~\cite{malo2014fpb} & 3 & 3100 & 776 & 970 \\
+\fiqa{} & posts, microblogs~\cite{maia2018fiqa} & 3 & 750 & 188 & 235 \\
+\tfns{} & tweets~\cite{tfns2022} & 3 & 2500 & 500 & 2388 \\
+Headlines & gold news~\cite{sinha2021headlines} & 2 & 2500 & 500 & 2000 \\
+SST-2 & movie reviews~\cite{socher2013sst} & 2 & -- & -- & 872 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Models}
+The main model is Granite-3.1-1B-A400M-base~\cite{granite2024}: 24 layers, hidden size 1024,
+32 experts per layer with intermediate size 512, top-8 routing, 1.33B parameters in total and
+about 0.4B active per token. As a dense reference we use Qwen2.5-0.5B~\cite{qwen2025qwen25}
+(0.49B parameters, all active) with the same attention LoRA.
+
+\subsection{Training}
+One adapter is trained on the union of the four training sets for one epoch (553 steps of
+batch size 16) with AdamW~\cite{loshchilov2019adamw}, no weight decay, 6\% linear warm-up and
+cosine decay, gradient clipping at 1.0 and maximum prompt length 192 tokens. The learning rate
+is $2\cdot10^{-4}$ for LoRA, $5\cdot10^{-4}$ for the router and $3\cdot10^{-5}$ for the
+full-rank ESFT deltas; LoRA uses $\alpha=2r$. The frozen backbone runs in bf16 (fp16 on T4 GPUs) and
+all trainable tensors are kept in fp32. The validation set is evaluated every 200 steps and at
+the end, and the adapter with the best mean validation macro-F1 is used for testing. No
+hyper-parameter search was performed: the values follow common practice for each method and
+are identical across tasks. Seed~0 runs were trained on an Apple M1 Pro (16\,GB, MPS backend);
+additional seeds were run on Kaggle T4 GPUs.
+
+\subsection{Metrics}
+We report macro-F1 (primary, because label distributions are skewed in opposite directions
+across tasks) and accuracy per task, and their unweighted mean over the four financial tasks.
+Efficiency is measured by the number of trainable parameters, training time, peak accelerator
+memory and inference latency.
