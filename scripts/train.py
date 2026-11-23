@@ -3,9 +3,13 @@
     uv run python scripts/train.py --config configs/lora_attn.yaml --seed 1
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
 import argparse
 import json
-from pathlib import Path
 
 from finmoe.config import load_config
 from finmoe.training import train

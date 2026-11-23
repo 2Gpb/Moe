@@ -5,9 +5,13 @@
     uv run python scripts/evaluate.py --run runs/lora_attn_s0
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
 import argparse
 import json
-from pathlib import Path
 
 import torch
 

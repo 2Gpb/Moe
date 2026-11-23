@@ -8,8 +8,12 @@ financial *training* data (used to pick experts for ESFT; no test data is involv
     uv run python scripts/analyze_routing.py --run runs/esft_gate_s0 --split test
 """
 
-import argparse
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+import argparse
 
 import torch
 from torch.utils.data import DataLoader
@@ -36,7 +40,7 @@ def main():
     parser.add_argument("--config", default="configs/base.yaml")
     parser.add_argument("--run", default=None)
     parser.add_argument("--split", default="train", help="split used for the financial tasks")
-    parser.add_argument("--max-examples", type=int, default=1000)
+    parser.add_argument("--max-examples", type=int, default=1000, help="0 = use the whole split")
     parser.add_argument("--out", default="results/routing")
     args = parser.parse_args()
 
@@ -57,7 +61,7 @@ def main():
 
     per_task = {}
     for task in FIN_TASKS:
-        rows = subsample(load_split(root, task, args.split), args.max_examples, seed=0)
+        rows = subsample(load_split(root, task, args.split), args.max_examples or None, seed=0)
         per_task[task] = record(head, recorder, rows, collator, 32)
         print(f"{task}: {int(per_task[task]['tokens'])} tokens, mean entropy {per_task[task]['entropy'].mean():.3f}")
     per_task["sst2"] = record(head, recorder, load_split(root, "sst2", "test"), collator, 32)

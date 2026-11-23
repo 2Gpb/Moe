@@ -7,11 +7,14 @@ weights stay in runs/.
     uv run python scripts/run_grid.py --configs lora_attn router esft_token --seeds 0 1 2
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
 import argparse
 import shutil
 import subprocess
-import sys
-from pathlib import Path
 
 LIGHT = ("summary.json", "config.yaml", "log.jsonl", "test_predictions.jsonl", "routing_test.pt", "esft_experts.json")
 
