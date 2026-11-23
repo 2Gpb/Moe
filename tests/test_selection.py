@@ -1,6 +1,6 @@
 import torch
 
-from finmoe.selection import select_by_threshold, select_least_used_like, select_random_like, select_specific_like
+from finmoe.selection import select_by_threshold, select_random_like, select_specific_like
 
 
 def test_threshold_picks_smallest_covering_set():
@@ -13,7 +13,7 @@ def test_controls_keep_the_budget():
     scores = torch.softmax(torch.randn(3, 8), -1)
     ref = select_by_threshold(scores, 0.4)
     general = torch.softmax(torch.randn(3, 8), -1)
-    for other in (select_random_like(ref, 8, seed=0), select_least_used_like(ref, scores), select_specific_like(ref, scores, general)):
+    for other in (select_random_like(ref, 8, seed=0), select_specific_like(ref, scores, general)):
         assert {l: len(v) for l, v in other.items()} == {l: len(v) for l, v in ref.items()}
 
 

@@ -64,16 +64,12 @@ class RoutingRecorder:
     """Accumulates per-layer routing statistics through forward hooks on the routers.
 
     Set ``recorder.token_mask`` (bool, [batch*seq]) before each forward pass so that
-    padding positions are ignored. With ``keep_logits=True`` the raw router logits of
-    the last forward are kept (with grad) for an auxiliary load-balancing loss.
+    padding positions are ignored.
     """
 
-    def __init__(self, layers: list[MoELayer], keep_logits: bool = False):
+    def __init__(self, layers: list[MoELayer]):
         self.layers = layers
-        self.keep_logits = keep_logits
         self.token_mask: torch.Tensor | None = None
-        self.enabled = True
-        self.logits: list[torch.Tensor] = []
         self.reset()
         self._handles = [l.router.register_forward_hook(self._hook(l.index)) for l in layers]
 
@@ -87,10 +83,6 @@ class RoutingRecorder:
     def _hook(self, idx: int):
         def hook(module, inputs, output):
             logits, _, top_idx = output
-            if self.keep_logits:
-                self.logits.append(logits if self.token_mask is None else logits[self.token_mask.to(logits.device)])
-            if not self.enabled:
-                return
             with torch.no_grad():
                 if self.token_mask is not None:
                     mask = self.token_mask.to(logits.device)
@@ -103,10 +95,6 @@ class RoutingRecorder:
                     self.tokens += logits.shape[0]
 
         return hook
-
-    def pop_logits(self) -> list[torch.Tensor]:
-        out, self.logits = self.logits, []
-        return out
 
     def summary(self) -> dict[str, torch.Tensor]:
         n = max(self.tokens, 1)
@@ -122,15 +110,3 @@ class RoutingRecorder:
         for h in self._handles:
             h.remove()
 
-
-def load_balancing_loss(router_logits: list[torch.Tensor], top_k: int) -> torch.Tensor:
-    """Switch-Transformer auxiliary loss, averaged over layers: E * sum_i f_i * P_i."""
-    losses = []
-    for logits in router_logits:
-        probs = logits.float().softmax(-1)
-        n_exp = probs.shape[-1]
-        top = probs.topk(top_k, dim=-1).indices
-        f = torch.zeros(n_exp, device=probs.device).scatter_add_(0, top.flatten(), torch.ones_like(top.flatten(), dtype=probs.dtype))
-        f = f / top.numel()
-        losses.append(n_exp * (f * probs.mean(0)).sum())
-    return torch.stack(losses).mean()

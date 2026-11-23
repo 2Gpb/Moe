@@ -6,7 +6,7 @@ Example config section::
       attn_lora: {rank: 16, alpha: 32, targets: [q_proj, k_proj, v_proj, o_proj]}
       expert_lora: {rank: 8, alpha: 16}
       router: true
-      esft: {score: selection_ratio, threshold: 0.2, control: none}
+      esft: {score: selection_ratio, threshold: 0.2, control: none}   # control: random | domain_specific
 
 Any subset of the components can be combined; an empty section means the
 frozen base model (zero-shot / few-shot evaluation).
@@ -23,7 +23,7 @@ from torch import nn
 from finmoe.adapters import wrap_experts
 from finmoe.modeling import load_model
 from finmoe.moe import find_moe_layers
-from finmoe.selection import select_by_threshold, select_least_used_like, select_random_like, select_specific_like
+from finmoe.selection import select_by_threshold, select_random_like, select_specific_like
 
 
 class LoRALinear(nn.Module):
@@ -63,8 +63,6 @@ def resolve_esft_experts(esft: dict, num_experts: int, seed: int) -> dict[int, l
     control = esft.get("control", "none")
     if control == "random":
         chosen = select_random_like(chosen, num_experts, seed)
-    elif control == "least_used":
-        chosen = select_least_used_like(chosen, scores)
     elif control == "domain_specific":
         chosen = select_specific_like(chosen, stats["selection_ratio"], stats["general_selection_ratio"])
     return chosen

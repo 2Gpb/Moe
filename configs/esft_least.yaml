@@ -1,4 +1,0 @@
-# control: same budget spent on the experts the domain uses least
-base: esft_token.yaml
-adapt:
-  esft: {control: least_used}

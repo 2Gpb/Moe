@@ -5,7 +5,7 @@ base model, ``<out>/esft_stats.pt`` with relevance scores aggregated over the
 financial *training* data (used to pick experts for ESFT; no test data is involved).
 
     uv run python scripts/analyze_routing.py --config configs/base.yaml
-    uv run python scripts/analyze_routing.py --run runs/esft_gate_s0 --split test
+    uv run python scripts/analyze_routing.py --run runs/esft_token_s0 --split test
 """
 
 import sys

@@ -1,3 +1,0 @@
-base: base.yaml
-adapt:
-  expert_lora: {rank: 8, alpha: 16}

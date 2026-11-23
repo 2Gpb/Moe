@@ -3,7 +3,7 @@
 `AdaptedExperts` replaces a model's experts module and adds two optional kinds
 of trainable parameters on top of the frozen expert weights W_e:
 
-* expert LoRA:   W_e + (alpha / r) * B_e A_e   for every expert e (or a subset)
+* expert LoRA:   W_e + (alpha / r) * B_e A_e   for every expert e
 * expert deltas: W_e + D_e                      full-rank, only for selected experts
                                                 (expert-specialised fine-tuning, ESFT)
 
@@ -28,7 +28,6 @@ class AdaptedExperts(nn.Module):
         base: nn.Module,
         lora_rank: int = 0,
         lora_alpha: float = 16.0,
-        lora_experts: list[int] | None = None,
         delta_experts: list[int] | None = None,
     ):
         super().__init__()
@@ -40,10 +39,9 @@ class AdaptedExperts(nn.Module):
 
         self.lora_rank = lora_rank
         self.lora_scale = lora_alpha / lora_rank if lora_rank else 0.0
-        lora_experts = list(range(n_exp)) if lora_experts is None else sorted(lora_experts)
-        self.lora_slot = {e: j for j, e in enumerate(lora_experts)} if lora_rank else {}
+        self.lora_slot = {e: e for e in range(n_exp)} if lora_rank else {}
         if lora_rank:
-            k = len(lora_experts)
+            k = n_exp
             self.lora_gu_a = nn.Parameter(torch.empty(k, lora_rank, hidden))
             self.lora_gu_b = nn.Parameter(torch.zeros(k, two_i, lora_rank))
             self.lora_d_a = nn.Parameter(torch.empty(k, lora_rank, inter))
@@ -101,8 +99,6 @@ def wrap_experts(
     lora_rank: int = 0,
     lora_alpha: float = 16.0,
     delta_experts: dict[int, list[int]] | None = None,
-    lora_experts: dict[int, list[int]] | None = None,
-    layers: list[int] | None = None,
 ) -> list[MoELayer]:
     """Swaps every experts module for an `AdaptedExperts` wrapper.
 
@@ -111,14 +107,11 @@ def wrap_experts(
     """
     moe_layers = find_moe_layers(model)
     for layer in moe_layers:
-        if layers is not None and layer.index not in layers:
-            continue
         base = layer.experts
         wrapped = AdaptedExperts(
             base,
             lora_rank=lora_rank,
             lora_alpha=lora_alpha,
-            lora_experts=None if lora_experts is None else lora_experts.get(layer.index, []),
             delta_experts=(delta_experts or {}).get(layer.index, []),
         ).to(base.gate_up_proj.device)
         setattr(layer.block, layer.experts_name, wrapped)

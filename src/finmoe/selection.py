@@ -28,14 +28,6 @@ def select_random_like(reference: dict[int, list[int]], num_experts: int, seed: 
     }
 
 
-def select_least_used_like(reference: dict[int, list[int]], scores: torch.Tensor) -> dict[int, list[int]]:
-    """Adversarial control: the same budget spent on the least relevant experts."""
-    return {
-        layer: sorted(torch.argsort(scores[layer])[: len(experts)].tolist())
-        for layer, experts in reference.items()
-    }
-
-
 def select_specific_like(reference: dict[int, list[int]], fin: torch.Tensor, general: torch.Tensor) -> dict[int, list[int]]:
     """Same budget, but rank experts by how much more the domain uses them than general text."""
     spec = domain_specificity(fin, general)

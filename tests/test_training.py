@@ -52,7 +52,7 @@ def make_cfg(tiny_dir, adapt):
     "adapt",
     [
         {"attn_lora": {"rank": 2, "alpha": 4}},
-        {"expert_lora": {"rank": 2}, "router": True, "aux_loss_coef": 0.01},
+        {"expert_lora": {"rank": 2}, "router": True},
         {"esft": {"stats": "STATS", "score": "selection_ratio", "threshold": 0.5, "control": "random"}},
     ],
 )

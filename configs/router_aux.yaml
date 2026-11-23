@@ -1,4 +1,0 @@
-# router tuning with the Switch load-balancing loss kept on
-base: router.yaml
-adapt:
-  aux_loss_coef: 0.01

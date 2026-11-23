@@ -1,4 +1,0 @@
-# ESFT-Gate: experts ranked by their average router probability
-base: esft_token.yaml
-adapt:
-  esft: {score: mean_prob}

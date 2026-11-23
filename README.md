@@ -32,12 +32,11 @@ the logits of one verbalizer token per class (` negative`, ` neutral`, ` positiv
 | Config | What is trained |
 |---|---|
 | `lora_attn` | LoRA (r=16) on q/k/v/o projections |
-| `lora_experts`, `lora_experts_r1` | LoRA on every expert's gate/up and down projections (r=8, r=1) |
-| `router`, `router_aux` | router weights only (with / without load-balancing loss) |
-| `lora_attn_router` | attention LoRA + router |
-| `esft_token`, `esft_gate` | full update of the experts that cover 20% of the domain's routing mass (ESFT) |
+| `lora_experts_r1` | LoRA (r=1) on every expert's gate/up and down projections; same budget as `lora_attn` |
+| `router` | router weights only |
+| `esft_token` | full update of the experts that cover 20% of the domain's routing mass (ESFT-Token) |
 | `esft_specific` | same expert budget, experts ranked by domain specificity log(p_fin / p_general) |
-| `esft_random`, `esft_least` | controls: same budget on random / least-used experts |
+| `esft_random` | control: same budget on randomly chosen experts |
 | `dense_lora_attn` | Qwen2.5-0.5B with attention LoRA |
 
 ## Layout
@@ -45,7 +44,7 @@ the logits of one verbalizer token per class (` negative`, ` neutral`, ` positiv
 ```
 src/finmoe/
   data.py         tasks, prompts, fixed splits, collator
-  moe.py          finds router/experts in any HF MoE model, routing statistics, load-balancing loss
+  moe.py          finds router/experts in any HF MoE model, routing statistics
   adapters.py     AdaptedExperts: expert LoRA and ESFT deltas on top of frozen 3D expert weights
   build.py        builds a model + adapters from a config; attention LoRA
   selection.py    expert selection for ESFT and the control conditions

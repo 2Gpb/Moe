@@ -19,7 +19,7 @@ from finmoe.build import build_model
 from finmoe.data import Collator, load_split
 from finmoe.evaluation import compute_metrics, predict
 from finmoe.modeling import VerbalizerHead, pick_device, pick_dtype
-from finmoe.moe import RoutingRecorder, find_moe_layers, load_balancing_loss
+from finmoe.moe import RoutingRecorder, find_moe_layers
 
 
 def seed_everything(seed: int) -> None:
@@ -102,12 +102,6 @@ def train(cfg: dict, run_dir: Path) -> dict:
     optimizer = torch.optim.AdamW(param_groups(model, optim), weight_decay=optim.get("weight_decay", 0.0))
     scaler = torch.amp.GradScaler("cuda", enabled=dtype == torch.float16 and device.type == "cuda")
 
-    aux_coef = cfg.get("adapt", {}).get("aux_loss_coef", 0.0)
-    layers = find_moe_layers(model, required=aux_coef > 0)
-    recorder = RoutingRecorder(layers, keep_logits=True) if aux_coef > 0 else None
-    if recorder is not None:
-        recorder.enabled = False
-
     eval_every = optim.get("eval_every", max(1, total_steps // 2))
     log = open(run_dir / "log.jsonl", "w")
     best = {"score": -1.0, "step": -1}
@@ -117,14 +111,9 @@ def train(cfg: dict, run_dir: Path) -> dict:
     model.train()
     for epoch in range(optim["epochs"]):
         for i, batch in enumerate(loader):
-            if recorder is not None:
-                recorder.token_mask = batch["attention_mask"].flatten().bool()
             logits = head(batch)
             loss = F.cross_entropy(logits, batch["labels"].to(logits.device))
-            aux = torch.zeros((), device=logits.device)
-            if recorder is not None:
-                aux = load_balancing_loss(recorder.pop_logits(), layers[0].top_k)
-            scaler.scale((loss + aux_coef * aux) / accum).backward()
+            scaler.scale(loss / accum).backward()
             if (i + 1) % accum:
                 continue
 
@@ -139,18 +128,14 @@ def train(cfg: dict, run_dir: Path) -> dict:
 
             if step % optim.get("log_every", 20) == 0:
                 release_cache(device)
-                entry = {"step": step, "loss": loss.item(), "aux": aux.item(), "grad_norm": float(grad_norm),
+                entry = {"step": step, "loss": loss.item(), "grad_norm": float(grad_norm),
                          "lr": optimizer.param_groups[0]["lr"], "elapsed": time.perf_counter() - t0}
                 log.write(json.dumps(entry) + "\n")
                 log.flush()
                 print(entry, flush=True)
 
             if step % eval_every == 0 or step == total_steps:
-                if recorder is not None:
-                    recorder.keep_logits = False
                 _, metrics, _ = evaluate_split(head, val_rows, collator, optim.get("eval_batch_size", 32), desc="val")
-                if recorder is not None:
-                    recorder.keep_logits = True
                 score = metrics["mean"]["macro_f1"]
                 log.write(json.dumps({"step": step, "val": metrics}) + "\n")
                 log.flush()
@@ -162,8 +147,6 @@ def train(cfg: dict, run_dir: Path) -> dict:
                 model.train()
 
     train_seconds = time.perf_counter() - t0
-    if recorder is not None:
-        recorder.remove()
     best_state = torch.load(run_dir / "adapter.pt", map_location=device)
     model.load_state_dict(best_state, strict=False)
     summary = test_and_profile(cfg, model, head, collator, run_dir)

@@ -3,7 +3,7 @@ import torch
 from transformers import GraniteMoeConfig, GraniteMoeForCausalLM
 
 from finmoe.adapters import AdaptedExperts, count_parameters, wrap_experts
-from finmoe.moe import RoutingRecorder, find_moe_layers, load_balancing_loss
+from finmoe.moe import RoutingRecorder, find_moe_layers
 
 
 @pytest.fixture
@@ -89,9 +89,3 @@ def test_routing_recorder_respects_mask(tiny_model):
     torch.testing.assert_close(s["selection_ratio"].sum(-1), torch.ones(2, dtype=torch.float64))
     torch.testing.assert_close(s["mean_prob"].sum(-1), torch.ones(2, dtype=torch.float64))
 
-
-def test_load_balancing_loss_is_one_for_uniform_router():
-    logits = [torch.zeros(64, 8)]
-    # uniform probabilities and a perfectly balanced top-k would give exactly 1;
-    # ties in topk pick the same experts, so only the lower bound holds here
-    assert load_balancing_loss(logits, top_k=2).item() >= 1.0 - 1e-6

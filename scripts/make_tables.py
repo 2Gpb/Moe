@@ -19,16 +19,11 @@ METHODS = {
     "base_0shot": "Zero-shot",
     "base_2shot": "Few-shot (2/label)",
     "router": "Router only",
-    "router_aux": "Router + LB loss",
     "lora_attn": "LoRA-Attn (r=16)",
-    "lora_attn_router": "LoRA-Attn + Router",
     "lora_experts_r1": "LoRA-Experts (r=1)",
-    "lora_experts": "LoRA-Experts (r=8)",
     "esft_token": "ESFT-Token",
-    "esft_gate": "ESFT-Gate",
-    "esft_specific": "ESFT-Specific (ours)",
     "esft_random": "ESFT-Random (ctrl)",
-    "esft_least": "ESFT-Least (ctrl)",
+    "esft_specific": "ESFT-Specific (ours)",
     "dense_lora_attn": "Dense Qwen2.5-0.5B LoRA-Attn",
 }
 
