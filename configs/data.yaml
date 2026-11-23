@@ -1,0 +1,13 @@
+seed: 42
+root: data/splits
+
+# Large sources are subsampled so that one epoch of multi-task training
+# fits into roughly half an hour on a laptop GPU.
+caps:
+  tfns:
+    train: 2500
+    val: 500
+  headlines:
+    train: 2500
+    val: 500
+    test: 2000
