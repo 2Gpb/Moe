@@ -1,20 +1,17 @@
-"""Choosing which experts to fine-tune from routing statistics (ESFT, Wang et al. 2024)."""
+"""Which experts to fine-tune (ESFT, Wang et al. 2024) and the controls."""
 
 from __future__ import annotations
 
 import torch
 
 
-def select_by_threshold(scores: torch.Tensor, p: float, max_per_layer: int | None = None) -> dict[int, list[int]]:
-    """For every layer keep the smallest set of top-scoring experts whose
-    cumulative relevance reaches ``p`` (scores of a layer sum to one)."""
+def select_by_threshold(scores: torch.Tensor, p: float) -> dict[int, list[int]]:
+    """In every layer take the top experts until their scores add up to p."""
     selected = {}
     for layer, row in enumerate(scores):
         order = torch.argsort(row, descending=True)
         cum = torch.cumsum(row[order], 0)
         k = int((cum < p).sum().item()) + 1
-        if max_per_layer is not None:
-            k = min(k, max_per_layer)
         selected[layer] = sorted(order[:k].tolist())
     return selected
 

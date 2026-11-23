@@ -1,10 +1,8 @@
-"""Model-agnostic access to the sparse MoE blocks of a Hugging Face model.
+"""Finding the MoE blocks in a HF model and collecting routing statistics.
 
-Recent transformers versions implement OLMoE, Granite-MoE, Qwen-MoE, Mixtral, ...
-with the same two-part layout: a top-k router that returns
-``(router_logits, top_k_weights, top_k_index)`` and an experts module that keeps
-all expert weights in two 3D tensors, ``gate_up_proj`` [E, 2I, H] and
-``down_proj`` [E, H, I]. Everything in this project relies only on that layout.
+In transformers 5 every MoE block (Granite, OLMoE, Qwen-MoE, Mixtral) has a top-k
+router and an experts module with all expert weights in two 3D tensors:
+gate_up_proj [E, 2I, H] and down_proj [E, H, I]. The code only relies on that.
 """
 
 from __future__ import annotations
@@ -63,9 +61,8 @@ def _is_adapted(module: nn.Module) -> bool:
 def unpack_router_output(output: tuple, num_experts: int) -> tuple[torch.Tensor, torch.Tensor]:
     """Returns (router_logits [N, E], top_k_index [N, k]).
 
-    The order of the router outputs changed between transformers releases
-    (5.20 returns index first, 5.24 logits first), so the tensors are told
-    apart by their content: the index tensor is integer, the logits have E columns.
+    The output order differs between transformers versions, so the tensors are
+    picked by type and shape instead of position.
     """
     index = next(t for t in output if not t.is_floating_point())
     logits = next(t for t in output if t.is_floating_point() and t.shape[-1] == num_experts)
@@ -73,10 +70,9 @@ def unpack_router_output(output: tuple, num_experts: int) -> tuple[torch.Tensor,
 
 
 class RoutingRecorder:
-    """Accumulates per-layer routing statistics through forward hooks on the routers.
+    """Forward hooks on the routers that count which experts get chosen.
 
-    Set ``recorder.token_mask`` (bool, [batch*seq]) before each forward pass so that
-    padding positions are ignored.
+    Set `token_mask` (bool, [batch*seq]) before each forward so padding is skipped.
     """
 
     def __init__(self, layers: list[MoELayer]):

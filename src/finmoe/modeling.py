@@ -40,7 +40,7 @@ def load_model(name: str, device: torch.device, dtype: torch.dtype):
 
 
 class VerbalizerHead:
-    """Maps the LM's next-token distribution onto the label words of each task.
+    """Class logits = LM logits of the label words at the last prompt token.
 
     Only the hidden state at the last prompt position goes through the LM head,
     which avoids materialising [batch, seq, vocab] logits.

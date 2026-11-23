@@ -30,7 +30,6 @@ def main():
     parser.add_argument("--tasks", nargs="*", default=None)
     parser.add_argument("--split", default="test")
     parser.add_argument("--out", default=None)
-    parser.add_argument("--set", nargs="*", default=[])
     args = parser.parse_args()
 
     if args.run:
@@ -38,7 +37,7 @@ def main():
         dtype = pick_dtype(device)
         model, tokenizer, cfg = load_trained(args.run, device, dtype)
     else:
-        cfg = load_config(args.config, args.set)
+        cfg = load_config(args.config)
         device = pick_device(cfg.get("device", "auto"))
         dtype = pick_dtype(device, cfg.get("dtype", "auto"))
         model, tokenizer, _ = build_model(cfg, device, dtype)

@@ -1,15 +1,11 @@
-"""Parameter-efficient adapters for the MoE blocks.
+"""Trainable additions to the frozen experts.
 
-`AdaptedExperts` replaces a model's experts module and adds two optional kinds
-of trainable parameters on top of the frozen expert weights W_e:
+AdaptedExperts wraps a model's experts module and can add:
+  - expert LoRA:  W_e + (alpha / r) * B_e A_e   for every expert
+  - expert delta: W_e + D_e                      full-rank, only for selected experts (ESFT)
 
-* expert LoRA:   W_e + (alpha / r) * B_e A_e   for every expert e
-* expert deltas: W_e + D_e                      full-rank, only for selected experts
-                                                (expert-specialised fine-tuning, ESFT)
-
-Tokens are sorted by expert and each expert processes its contiguous slice,
-which is the same idea as grouped GEMM but written as a plain loop so it runs
-unchanged on CUDA, MPS and CPU.
+Tokens are sorted by expert and every expert processes its own slice in a plain
+loop, so the same code runs on CUDA, MPS and CPU.
 """
 
 from __future__ import annotations
@@ -60,7 +56,7 @@ class AdaptedExperts(nn.Module):
         y = x @ weight[e].t()
         d = self.delta_slot.get(e)
         if d is not None:
-            # the delta stays in fp32: adding it to a bf16 weight first would round small updates away
+            # separate matmul in fp32: W + delta in bf16 would round small updates away
             y = y + (x.to(delta.dtype) @ delta[d].t()).to(y.dtype)
         l = self.lora_slot.get(e)
         if l is not None:
@@ -100,11 +96,7 @@ def wrap_experts(
     lora_alpha: float = 16.0,
     delta_experts: dict[int, list[int]] | None = None,
 ) -> list[MoELayer]:
-    """Swaps every experts module for an `AdaptedExperts` wrapper.
-
-    The trainable tensors are created in float32 on the model's device; the
-    frozen expert weights keep their original dtype.
-    """
+    """Replaces every experts module with AdaptedExperts (adapters are fp32)."""
     moe_layers = find_moe_layers(model)
     for layer in moe_layers:
         base = layer.experts

@@ -1,15 +1,12 @@
-"""Builds a model with the adaptation method described by a config dict.
-
-Example config section::
+"""Builds the model + adapters from the `adapt` section of a config.
 
     adapt:
-      attn_lora: {rank: 16, alpha: 32, targets: [q_proj, k_proj, v_proj, o_proj]}
-      expert_lora: {rank: 8, alpha: 16}
+      attn_lora: {rank: 16, alpha: 32}
+      expert_lora: {rank: 1, alpha: 2}
       router: true
-      esft: {score: selection_ratio, threshold: 0.2, control: none}   # control: random | domain_specific
+      esft: {stats: ..., score: selection_ratio, threshold: 0.2, control: none}  # or random / domain_specific
 
-Any subset of the components can be combined; an empty section means the
-frozen base model (zero-shot / few-shot evaluation).
+Empty `adapt` = frozen base model (zero-shot).
 """
 
 from __future__ import annotations
@@ -59,7 +56,7 @@ def _cast_to_weight_dtype(module: nn.Module, args):
 def resolve_esft_experts(esft: dict, num_experts: int, seed: int) -> dict[int, list[int]]:
     stats = torch.load(esft["stats"], weights_only=False)
     scores = stats[esft.get("score", "selection_ratio")]
-    chosen = select_by_threshold(scores, esft["threshold"], esft.get("max_per_layer"))
+    chosen = select_by_threshold(scores, esft["threshold"])
     control = esft.get("control", "none")
     if control == "random":
         chosen = select_random_like(chosen, num_experts, seed)
@@ -93,7 +90,7 @@ def build_model(cfg: dict, device: torch.device, dtype: torch.dtype, seed: int =
             layer.router.weight.requires_grad_(True)
             layer.router.register_forward_pre_hook(_cast_to_weight_dtype)
 
-    # keep every trainable tensor in fp32 even if the frozen backbone is bf16/fp16
+    # trainable tensors in fp32, frozen backbone stays bf16/fp16
     for p in model.parameters():
         if p.requires_grad and p.dtype != torch.float32:
             p.data = p.data.float()

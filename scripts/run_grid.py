@@ -25,7 +25,6 @@ def main():
     parser.add_argument("--seeds", nargs="+", type=int, default=[0])
     parser.add_argument("--runs", default="runs")
     parser.add_argument("--results", default="results/runs")
-    parser.add_argument("--set", nargs="*", default=[])
     parser.add_argument("--deadline-hours", type=float, default=None, help="do not start new runs after this many hours")
     args = parser.parse_args()
 
@@ -43,8 +42,6 @@ def main():
             else:
                 cmd = [sys.executable, "scripts/train.py", "--config", f"configs/{name}.yaml", "--seed", str(seed),
                        "--out", args.runs, "--name", run]
-                if args.set:
-                    cmd += ["--set", *args.set]
                 print(" ".join(cmd), flush=True)
                 if subprocess.run(cmd).returncode != 0:
                     print(f"FAILED {run}", flush=True)

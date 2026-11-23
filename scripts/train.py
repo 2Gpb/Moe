@@ -21,10 +21,9 @@ def main():
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--out", default="runs")
     parser.add_argument("--name", default=None, help="run name, defaults to <config>_s<seed>")
-    parser.add_argument("--set", nargs="*", default=[], help="overrides such as optim.lr=1e-4")
     args = parser.parse_args()
 
-    cfg = load_config(args.config, args.set)
+    cfg = load_config(args.config)
     if args.seed is not None:
         cfg["seed"] = args.seed
     name = args.name or f"{Path(args.config).stem}_s{cfg['seed']}"

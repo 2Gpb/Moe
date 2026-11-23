@@ -1,4 +1,4 @@
-"""Multi-task fine-tuning loop shared by every adaptation method."""
+"""Training loop, the same for every adaptation method."""
 
 from __future__ import annotations
 
@@ -32,18 +32,6 @@ def load_rows(root: str, tasks: list[str], split: str) -> list[dict]:
     return [r for t in tasks for r in load_split(root, t, split)]
 
 
-def param_groups(model: torch.nn.Module, optim: dict) -> list[dict]:
-    """One group per learning rate; ``lr_overrides`` maps a name fragment to its lr."""
-    overrides = optim.get("lr_overrides", {})
-    groups: dict[float, list] = {}
-    for name, p in model.named_parameters():
-        if not p.requires_grad:
-            continue
-        lr = next((v for k, v in overrides.items() if k in name), optim["lr"])
-        groups.setdefault(float(lr), []).append(p)
-    return [{"params": ps, "lr": lr, "initial_lr": lr} for lr, ps in groups.items()]
-
-
 def lr_factor(step: int, total: int, warmup: int) -> float:
     if step < warmup:
         return (step + 1) / warmup
@@ -60,7 +48,7 @@ def peak_memory_gb(device: torch.device) -> float:
 
 
 def release_cache(device: torch.device) -> None:
-    # batches have different lengths, so the MPS/CUDA caching allocators keep growing otherwise
+    # batches have different lengths and the allocator cache keeps growing otherwise
     if device.type == "mps":
         torch.mps.empty_cache()
     elif device.type == "cuda":
@@ -95,11 +83,11 @@ def train(cfg: dict, run_dir: Path) -> dict:
     g = torch.Generator().manual_seed(seed)
     loader = DataLoader(train_rows, batch_size=optim["batch_size"], shuffle=True, collate_fn=collator, generator=g, drop_last=True)
 
-    accum = optim.get("grad_accum", 1)
-    total_steps = optim["epochs"] * len(loader) // accum
+    total_steps = optim["epochs"] * len(loader)
     warmup = int(optim.get("warmup_ratio", 0.06) * total_steps)
     params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.AdamW(param_groups(model, optim), weight_decay=optim.get("weight_decay", 0.0))
+    optimizer = torch.optim.AdamW(params, lr=optim["lr"], weight_decay=optim.get("weight_decay", 0.0))
+    # GradScaler is only needed for fp16 (T4), bf16 has enough range
     scaler = torch.amp.GradScaler("cuda", enabled=dtype == torch.float16 and device.type == "cuda")
 
     eval_every = optim.get("eval_every", max(1, total_steps // 2))
@@ -110,15 +98,12 @@ def train(cfg: dict, run_dir: Path) -> dict:
 
     model.train()
     for epoch in range(optim["epochs"]):
-        for i, batch in enumerate(loader):
+        for batch in loader:
             logits = head(batch)
             loss = F.cross_entropy(logits, batch["labels"].to(logits.device))
-            scaler.scale(loss / accum).backward()
-            if (i + 1) % accum:
-                continue
+            scaler.scale(loss).backward()
 
-            for group in optimizer.param_groups:
-                group["lr"] = group["initial_lr"] * lr_factor(step, total_steps, warmup)
+            optimizer.param_groups[0]["lr"] = optim["lr"] * lr_factor(step, total_steps, warmup)
             scaler.unscale_(optimizer)
             grad_norm = torch.nn.utils.clip_grad_norm_(params, optim.get("max_grad_norm", 1.0))
             scaler.step(optimizer)
@@ -141,7 +126,7 @@ def train(cfg: dict, run_dir: Path) -> dict:
                 log.flush()
                 print(f"step {step} val macro-F1 {score:.4f}", flush=True)
                 if score > best["score"]:
-                    # only the trainable tensors are saved, the frozen backbone is reloaded from the hub
+                    # only trainable tensors are saved, the base model comes from the hub
                     best = {"score": score, "step": step, "val": metrics}
                     torch.save(adapter_state_dict(model), run_dir / "adapter.pt")
                 model.train()
@@ -166,10 +151,9 @@ def train(cfg: dict, run_dir: Path) -> dict:
 
 
 def test_and_profile(cfg, model, head, collator, run_dir: Path) -> dict:
-    """Test-set metrics with routing statistics recorded on the same pass."""
+    """Test metrics + routing statistics collected in the same pass."""
     data = cfg["data"]
-    tasks = data.get("test_tasks", data["tasks"])
-    rows = load_rows(data["root"], tasks, "test")
+    rows = load_rows(data["root"], data["tasks"], "test")
     layers = find_moe_layers(model, required=False)
     recorder = RoutingRecorder(layers) if layers else None
     records, metrics, seconds = evaluate_split(head, rows, collator, cfg["optim"].get("eval_batch_size", 32), recorder, desc="test")
