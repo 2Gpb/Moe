@@ -51,17 +51,10 @@ class VerbalizerHead:
         self.max_labels = max_labels
         self.label_ids = {name: verbalizer_ids(tokenizer, task) for name, task in TASKS.items()}
 
-    def backbone(self):
-        model = self.model
-        # unwrap a peft model if present
-        if hasattr(model, "get_base_model"):
-            model = model.get_base_model()
-        return model.model, model.lm_head
-
     def __call__(self, batch: dict) -> torch.Tensor:
         """Returns [batch, max_labels] class logits; missing classes are -inf."""
-        body, lm_head = self.backbone()
-        device = next(lm_head.parameters()).device
+        body, lm_head = self.model.model, self.model.lm_head
+        device = lm_head.weight.device
         hidden = body(
             input_ids=batch["input_ids"].to(device),
             attention_mask=batch["attention_mask"].to(device),
