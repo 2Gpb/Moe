@@ -1,0 +1,23 @@
+model: ibm-granite/granite-3.1-1b-a400m-base
+seed: 0
+device: auto
+dtype: auto
+
+data:
+  root: data/splits
+  tasks: [fpb, fiqasa, tfns, headlines]
+  max_length: 192
+
+optim:
+  epochs: 1
+  batch_size: 16
+  grad_accum: 1
+  eval_batch_size: 32
+  lr: 2.0e-4
+  weight_decay: 0.0
+  warmup_ratio: 0.06
+  max_grad_norm: 1.0
+  log_every: 20
+  eval_every: 200
+
+adapt: {}

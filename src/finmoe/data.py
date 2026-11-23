@@ -159,13 +159,20 @@ def load_split(root: Path, task: str, split: str) -> list[dict]:
 class Collator:
     """Tokenises prompts with right padding and records the last real position."""
 
-    def __init__(self, tokenizer, max_length: int = 192):
+    def __init__(self, tokenizer, max_length: int = 192, demos: dict[str, list[dict]] | None = None):
         self.tok = tokenizer
         self.max_length = max_length
-        self.label_ids = {name: verbalizer_ids(tokenizer, t) for name, t in TASKS.items()}
+        self.demos = demos or {}
+
+    def prompt(self, row: dict) -> str:
+        task = TASKS[row["task"]]
+        shots = "".join(
+            f"{format_prompt(task, d['text'])} {task.labels[d['label']]}\n\n" for d in self.demos.get(row["task"], [])
+        )
+        return shots + format_prompt(task, row["text"])
 
     def __call__(self, batch: list[dict]) -> dict:
-        prompts = [format_prompt(TASKS[r["task"]], r["text"]) for r in batch]
+        prompts = [self.prompt(r) for r in batch]
         # truncate the text from the left side of the prompt so that "Answer:" is never cut off
         enc = [self.tok(p, add_special_tokens=False)["input_ids"] for p in prompts]
         enc = [ids[-self.max_length:] for ids in enc]
@@ -183,6 +190,17 @@ class Collator:
             "labels": torch.tensor([r["label"] for r in batch]),
             "tasks": [r["task"] for r in batch],
         }
+
+
+def pick_demos(rows: list[dict], per_label: int, seed: int) -> list[dict]:
+    """Class-balanced in-context examples, interleaved so no label dominates the end of the prompt."""
+    rng = random.Random(seed)
+    by_label: dict[int, list[dict]] = {}
+    for r in rows:
+        by_label.setdefault(r["label"], []).append(r)
+    picked = {label: rng.sample(group, per_label) for label, group in sorted(by_label.items())}
+    demos = [picked[label][i] for i in range(per_label) for label in picked]
+    return demos
 
 
 def verbalizer_ids(tokenizer, task: Task) -> list[int]:
