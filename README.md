@@ -39,6 +39,26 @@ the logits of one verbalizer token per class (` negative`, ` neutral`, ` positiv
 | `esft_random` | control: same budget on randomly chosen experts |
 | `dense_lora_attn` | Qwen2.5-0.5B with attention LoRA |
 
+## Results
+
+Test macro-F1 (%), mean ± std over 3 seeds, Granite-3.1-1B-A400M (dense row: Qwen2.5-0.5B).
+All runs on one Kaggle T4, fp16. Full tables: `results/main_table.md`, `results/efficiency_table.md`.
+
+| Method | Trainable | FPB | FiQA-SA | TFNS | Headlines | Mean |
+|---|---|---|---|---|---|---|
+| Zero-shot | 0 | 37.3 | 51.9 | 33.5 | 45.5 | 42.0 |
+| Few-shot (2/label) | 0 | 36.5 | 57.0 | 35.8 | 42.1 | 42.9 |
+| Router only | 0.79M | 30.0 ± 3.5 | 21.3 ± 4.6 | 32.0 ± 2.1 | 49.6 ± 4.3 | 33.3 ± 1.3 |
+| LoRA-Attn (r=16) | 2.75M | 84.2 ± 0.8 | 64.4 ± 1.6 | 82.1 ± 1.9 | 66.7 ± 14.1 | 74.3 ± 3.7 |
+| LoRA-Experts (r=1) | 2.75M | 81.5 ± 1.5 | 57.6 ± 2.6 | 80.9 ± 0.1 | 43.5 ± 1.9 | 65.9 ± 1.5 |
+| **ESFT-Token** | 129M | **85.7 ± 0.7** | **66.0 ± 2.7** | **84.4 ± 0.8** | 81.1 ± 1.9 | **79.3 ± 0.1** |
+| ESFT-Random | 129M | 83.5 ± 0.4 | 61.3 ± 0.9 | 82.9 ± 0.6 | 73.8 ± 8.0 | 75.4 ± 2.3 |
+| ESFT-Specific | 129M | 83.1 ± 0.9 | 59.6 ± 0.9 | 82.5 ± 0.7 | 57.9 ± 13.7 | 70.8 ± 3.3 |
+| Dense LoRA-Attn | 2.16M | 84.1 ± 0.5 | 60.4 ± 0.7 | 83.5 ± 0.9 | **88.1 ± 0.9** | 79.0 ± 0.2 |
+
+The three ESFT variants train the same expert budget; what differs is the share of routed
+tokens that reaches the tuned experts (22.8% / 10.7% / 9.3%), and F1 follows it.
+
 ## Layout
 
 ```
@@ -87,5 +107,7 @@ Report: `cd report && tectonic main.tex`.
 
 - Adapter weights are saved to `runs/<name>/adapter.pt` whenever the validation macro-F1
   improves; only the trainable tensors are stored, the frozen backbone comes from the Hub.
+- Batches are padded with an ordinary token, not `<|endoftext|>`: in Granite that token gets
+  huge activations, padded positions overflow fp16 and every gradient turns into NaN.
 - On macOS with iCloud-synced folders the `.venv` files can get the `hidden` flag, which
   makes Python skip `.pth` files; the scripts therefore add `src/` to `sys.path` themselves.
