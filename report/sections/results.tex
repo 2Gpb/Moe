@@ -84,7 +84,7 @@ ESFT-Token; most of them lie on neutral cells.}
 
 \textbf{Financial text is routed differently, but only slightly.} Fig.~\ref{fig:sim} shows the
 Jensen--Shannon divergence between the per-layer expert distributions of the frozen model on
-the five test sets. The three sentiment datasets are close to each other
+the financial training sets (up to 1000 examples each) and on SST-2. The three sentiment datasets are close to each other
 ($2$--$5\cdot10^{-3}$) and farther from SST-2 ($12$--$16\cdot10^{-3}$); Headlines, whose prompts
 contain a question, is about as far from the sentiment tasks as SST-2 is. The router entropy is high on every dataset
 (3.02--3.06 nats out of a maximum of $\ln 32=3.47$), i.e.\ the model spreads tokens over many
@@ -107,7 +107,8 @@ destroys more than the re-routing gains, which explains why this method is below
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.78\columnwidth]{figures/task_similarity}
-\caption{Routing Jensen--Shannon divergence between datasets (frozen model, test sets,
+\caption{Routing Jensen--Shannon divergence between datasets (frozen model, financial training
+data and SST-2,
 averaged over layers).}
 \label{fig:sim}
 \end{figure}
