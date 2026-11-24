@@ -1,0 +1,55 @@
+\section{Discussion}
+
+\textbf{Where to spend the parameters.} In this MoE model, the most effective place for
+trainable parameters is the experts that already process most of the tokens, updated at full
+rank. A small number of parameters works well in the attention, where every token passes,
+but the same number spread thinly over all experts does not. Both observations point the
+same way: what limits an adapter in a sparse model is how much of the computation it reaches.
+Usage-based selection exploits this directly, which is why the original ESFT score works and
+our specificity score does not. The result that the most used experts are not
+domain-specific agrees with the high router entropy we measure: in a fine-grained model with
+top-8 routing, domain knowledge is spread over many shared experts rather than isolated in a
+few.
+
+\textbf{Negative result for ESFT-Specific.} Ranking experts by $\log(p_\text{fin}/p_\text{gen})$
+finds experts that are indeed more typical of finance, but they are rarely chosen, so their
+updates affect few tokens. A score that combines both factors, e.g.\ usage weighted by
+specificity, or the same selection with a larger budget, may work better; we did not test it.
+Specificity might still be useful when catastrophic forgetting of the general domain matters,
+because the selected experts carry only 5\% of the general-domain routing (vs.\ 21\% for ESFT),
+but we did not measure forgetting.
+
+\textbf{MoE vs.\ dense.} At the scale we can afford, the MoE model is not better than a dense
+model with a similar number of active parameters: ESFT matches the dense model in mean
+macro-F1 and accuracy but needs 60 times more trainable parameters, twice the memory and more than
+twice the latency. The dense model is clearly better on Headlines, the MoE model on \fiqa{}. The
+efficiency gap is partly due to our expert implementation (a loop instead of a fused grouped
+GEMM) and would be smaller with optimised kernels.
+
+\textbf{Limitations.}
+\begin{itemize}
+  \item One MoE model (1.3B) and one dense model; results for large MoE models with fewer,
+  bigger experts may differ.
+  \item No hyper-parameter search; learning rates follow common practice per method. The
+  router may need a much lower learning rate or a regulariser to keep the routing close to
+  the pre-trained one, and its failure here is a result for this setting only.
+  \item The ESFT variants have about 47 times more trainable parameters than the LoRA methods,
+  so the comparison between parameter \emph{locations} is budget-matched only for attention
+  vs.\ expert LoRA.
+  \item Three seeds; differences below about one standard deviation (e.g.\ ESFT vs.\ the dense
+  model) are not significant. Headlines is the most seed-sensitive task, and the mean F1 of
+  several methods is dominated by it.
+  \item Short single-epoch training on 8.9K examples; we do not evaluate forgetting on general
+  data or other financial tasks such as named-entity recognition or question answering.
+\end{itemize}
+
+\section{Conclusion}
+We compared where to place trainable parameters when adapting a sparse MoE language model to
+financial text classification. Updating the experts that the model already uses most (ESFT)
+gives the best and the most stable result, comparable to LoRA on a dense model of similar
+active size; attention LoRA is a strong cheap alternative, expert LoRA at the same budget is
+weaker, and tuning only the router is harmful. Selecting domain-specific instead of frequently
+used experts performs worse than random selection, and a routing analysis shows the reason:
+the benefit of a tuned expert is proportional to the share of tokens routed to it. For
+practitioners, this suggests choosing adapted experts by the amount of computation they
+handle on the target data, not by how specialised they look.

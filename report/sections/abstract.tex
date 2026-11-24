@@ -1,0 +1,16 @@
+Sparse Mixture-of-Experts (MoE) language models store most of their parameters in experts
+that are used conditionally, which raises a question that dense models do not have: when a
+model is adapted to a new domain, where should the trainable parameters go? We study this for
+financial text classification with Granite-3.1-1B-A400M, a 1.3B-parameter MoE model with 32
+experts per layer, trained jointly on four sentiment and news-headline tasks. We compare LoRA
+in the attention, budget-matched LoRA in the experts, tuning only the router, and
+Expert-Specialized Fine-Tuning (ESFT), which updates the experts the model already uses most
+on the target data, together with a random-expert control and ESFT-Specific, a variant that
+selects the experts most specific to financial compared with general text. Over three seeds,
+ESFT reaches 79.3\% mean macro-F1 (zero-shot: 42.0\%), the best and the most stable result,
+on par with LoRA on a dense model of similar active size. Spending the same parameter budget
+in the experts instead of the attention loses 8 points, and tuning the router alone falls
+below zero-shot. ESFT-Specific is worse than random selection; a routing analysis shows why:
+performance follows the share of routed tokens that pass through the tuned experts
+(23\% for ESFT, 11\% random, 9\% domain-specific), not the specialisation of the experts.
+Code, fixed splits, configurations and per-run results are released.

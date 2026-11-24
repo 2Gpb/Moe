@@ -14,8 +14,8 @@ designed for dense models and are typically attached to the attention projection
 models, Wang et al.~\cite{wang2024esft} proposed Expert-Specialized Fine-Tuning (ESFT): routing
 statistics on the target data identify the experts that the task already relies on, and only
 those experts are updated. Whether this transfers to a small MoE model and to a domain shift
-(rather than a task shift), and how it compares with LoRA in the experts or a re-trained
-router at matched budgets, is the subject of this project.
+(rather than a task shift), and how it compares with LoRA in the attention or in the experts
+and with a re-trained router, is the subject of this project.
 
 We use financial text classification as the target domain. Financial sentiment differs from
 everyday sentiment in a way that is easy to measure: a statement such as \emph{``the company
@@ -26,15 +26,16 @@ financial sentiment datasets in our zero-shot evaluation, which makes the domain
 
 \textbf{Contributions.}
 \begin{itemize}
-  \item A controlled comparison of six ways to place trainable parameters in a sparse MoE
-  language model (attention LoRA, expert LoRA at two ranks, router-only tuning, attention LoRA
-  plus router, and ESFT with two relevance scores) on four financial classification tasks
-  trained jointly, with a dense model of similar active size as reference.
-  \item Control experiments that isolate the value of routing-based expert selection: the same
-  expert budget spent on random or on the least-used experts.
-  \item A routing analysis showing that financial text is routed differently from general
-  text, that usage-frequency selection (ESFT) mostly picks generic high-traffic experts, and a
-  variant, ESFT-Specific, that ranks experts by domain specificity instead.
+  \item A controlled comparison of four places for trainable parameters in a sparse MoE
+  language model (attention LoRA, budget-matched expert LoRA, the router alone, and ESFT) on
+  four financial classification tasks trained jointly, over three seeds, with a dense model of
+  similar active size as reference.
+  \item Two selection variants with the same expert budget as ESFT: random experts (control)
+  and ESFT-Specific, our variant that ranks experts by how much more often they are used on
+  financial than on general text.
+  \item A routing analysis explaining the results: what matters for ESFT is the share of the
+  routed computation that passes through the tuned experts, not how domain-specific they are,
+  and tuning the router alone moves routing far more than the domain shift itself does.
   \item A compact, model-agnostic implementation of expert LoRA and expert deltas on top of the
   3D expert tensors used by current Hugging Face MoE models, released with fixed data splits
   and configurations.

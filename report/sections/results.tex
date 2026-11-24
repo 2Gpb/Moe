@@ -1,0 +1,155 @@
+\section{Results}
+
+\input{tables/main_f1}
+
+\subsection{Main comparison}
+Table~\ref{tab:main} gives test macro-F1 for all methods. The frozen model is weak on every
+financial task (42.0\% mean); two demonstrations per label change almost nothing (42.9\%),
+so the gap is not a matter of understanding the output format. All methods that update
+weights inside the network close most of it.
+
+\textbf{ESFT is the best and most stable MoE adaptation.} Updating the 82 most used experts
+gives 79.3\% mean macro-F1 with a standard deviation of 0.1 over seeds, the best result on
+\fpb{}, \fiqa{} and \tfns{}. It matches attention LoRA on the dense Qwen2.5-0.5B (79.0\%), whose
+active size is similar. The two models differ mainly on Headlines (81.1 vs.\ 88.1), where the
+dense model is better, and on \fiqa{} (66.0 vs.\ 60.4), where the MoE model is better.
+
+\textbf{Attention beats experts at a matched budget.} With the same 2.75M trainable
+parameters, LoRA in the attention projections reaches 74.3\% and rank-1 LoRA in all experts
+65.9\%. Expert LoRA is behind on every task and fails on Headlines (43.5\%, below zero-shot),
+i.e.\ a rank-1 update spread over 768 experts is too weak for a task that needs to relate a
+question to a headline. Attention LoRA solves the sentiment tasks almost as well as ESFT but
+is unstable on Headlines (78.7, 70.2 and 51.1 for the three seeds).
+
+\textbf{The router alone cannot adapt the model.} Training only the router (0.79M parameters)
+decreases the mean macro-F1 to 33.3\%, below the frozen model. Its training loss barely moves
+(Fig.~\ref{fig:curves}), while its routing on the test set drifts far from the pre-trained one
+(Section~\ref{sec:routing}).
+
+Test accuracy (released with the per-run results) gives the same ranking: 85.4\% for both
+ESFT-Token and the dense model, 83.9\% for ESFT-Random and 82.1\% for attention LoRA.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/pareto}
+\caption{Mean test macro-F1 against the number of trainable parameters (mean $\pm$ std over
+three seeds; frozen baselines are drawn at the left edge).}
+\label{fig:pareto}
+\end{figure}
+
+\subsection{Which experts to tune}
+The three ESFT variants train the same number of experts in every layer and therefore exactly
+the same number of parameters. The choice still matters: ESFT-Token (79.3\%) is ahead of
+random experts (75.4\%), which are ahead of our domain-specific selection (70.8\%). The
+difference between the variants is again largest on Headlines.
+
+To explain the order, Table~\ref{tab:coverage} measures, for each selection, the share of all
+routing decisions on the financial training data that go to the selected experts. Usage-based
+selection covers 22.8\% of the routed tokens with 10.7\% of the experts. Random experts cover
+roughly their share (10.7\%). The domain-specific experts are the most selective: they are
+chosen 1.9 times more often on financial than on general text (9.3\% vs.\ 5.0\%), but they
+see fewer financial tokens than random ones. The ranking of macro-F1 follows the coverage
+exactly. A tuned expert can only change the output for the tokens routed to it, so the
+amount of computation that passes through the adapted parameters, rather than their
+specialisation, determines how much the model can change.
+
+\begin{table}[t]
+\centering
+\caption{Share of routing decisions (top-$k$ slots, averaged over layers) that go to the
+experts selected by each ESFT variant, on financial training data and on SST-2. All variants
+select 82 of 768 experts (10.7\%).}
+\label{tab:coverage}
+\begin{tabular}{l c c c}
+\toprule
+Selection & Financial & General & Mean F1 \\
+\midrule
+ESFT-Token & 22.8 & 21.0 & 79.3 \\
+ESFT-Random & 10.7 & 10.5 & 75.4 \\
+ESFT-Specific & 9.3 & 5.0 & 70.8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Routing analysis}
+\label{sec:routing}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/domain_specificity}
+\caption{Domain specificity $\sigma_{\ell,e}$ of every expert of the frozen model (blue: used
+more on financial text, orange: more on SST-2). Circles mark the experts selected by
+ESFT-Token; most of them lie on neutral cells.}
+\label{fig:spec}
+\end{figure*}
+
+\textbf{Financial text is routed differently, but only slightly.} Fig.~\ref{fig:sim} shows the
+Jensen--Shannon divergence between the per-layer expert distributions of the frozen model on
+the five test sets. The three sentiment datasets are close to each other
+($2$--$5\cdot10^{-3}$) and farther from SST-2 ($12$--$16\cdot10^{-3}$); Headlines, whose prompts
+contain a question, is about as far from the sentiment tasks as SST-2 is. The router entropy is high on every dataset
+(3.02--3.06 nats out of a maximum of $\ln 32=3.47$), i.e.\ the model spreads tokens over many
+experts and no small group of experts is reserved for finance.
+
+\textbf{High-usage experts are generic.} Fig.~\ref{fig:spec} shows $\sigma_{\ell,e}$ for all
+experts. Specificity is concentrated in a few experts per layer, and the experts that ESFT
+selects are rarely among them: they are used heavily on financial and on general text alike
+(Table~\ref{tab:coverage}). ESFT therefore works not because it finds ``financial experts'',
+but because it adapts the experts that handle the largest part of the computation.
+
+\textbf{Router tuning moves the routing far more than the domain does.} Fig.~\ref{fig:shift}
+compares the routing of every fine-tuned model with the frozen one on the same test inputs.
+Methods that leave the router frozen change it only through the hidden states
+(JS $\le 4\cdot10^{-3}$ averaged over layers). The trained router moves it by
+$0.14$--$0.16$, about ten times the difference between financial and general text, and the
+shift grows with depth. Sending tokens to experts that were not trained to process them
+destroys more than the re-routing gains, which explains why this method is below zero-shot.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.78\columnwidth]{figures/task_similarity}
+\caption{Routing Jensen--Shannon divergence between datasets (frozen model, test sets,
+averaged over layers).}
+\label{fig:sim}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/routing_shift}
+\caption{Per-layer JS divergence between the routing of the frozen model and of each
+fine-tuned model (seed 0) on the test sets.}
+\label{fig:shift}
+\end{figure}
+
+\subsection{Efficiency}
+Table~\ref{tab:eff} reports the cost of one run on a T4. ESFT trains 47 times more parameters
+than attention LoRA, but the stored adapter is still only 9.7\% of the model, training takes
+7 minutes, and the peak memory (12.0\,GB) is 1.7\,GB above LoRA, mostly for the Adam state of
+the selected experts. Expert LoRA is the most expensive method in time and memory although it
+has few parameters, because every expert is touched and the adapters are applied in a Python
+loop over experts. The dense model is about twice as fast and needs half the memory: at this
+scale the MoE model has no efficiency advantage in our implementation.
+
+\begin{table}[t]
+\centering
+\caption{Cost per run on one T4 (mean over seeds): trainable parameters, training time,
+peak memory and test latency per example (batch 16).}
+\label{tab:eff}
+\begin{tabular}{l r r r r}
+\toprule
+Method & Params & Min & GB & ms \\
+\midrule
+Router only & 0.79M & 4.7 & 9.3 & 8.9 \\
+LoRA-Attn & 2.75M & 5.0 & 10.2 & 9.5 \\
+LoRA-Experts & 2.75M & 14.6 & 13.4 & 25.6 \\
+ESFT (any) & 129.0M & 6.2--6.9 & 11.5--12.0 & 12.4--13.3 \\
+Dense LoRA-Attn & 2.16M & 2.5 & 5.5 & 5.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/training_curves}
+\caption{Training loss (exponential moving average, seed 0).}
+\label{fig:curves}
+\end{figure}

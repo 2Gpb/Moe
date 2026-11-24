@@ -37,17 +37,28 @@ about 0.4B active per token. As a dense reference we use Qwen2.5-0.5B~\cite{qwen
 \subsection{Training}
 One adapter is trained on the union of the four training sets for one epoch (553 steps of
 batch size 16) with AdamW~\cite{loshchilov2019adamw}, no weight decay, 6\% linear warm-up and
-cosine decay, gradient clipping at 1.0 and maximum prompt length 192 tokens. The learning rate
+cosine decay, gradient clipping at 1.0 and maximum prompt length 192 tokens (longer prompts are
+truncated from the left so that the answer cue is kept). The learning rate
 is $2\cdot10^{-4}$ for LoRA, $5\cdot10^{-4}$ for the router and $3\cdot10^{-5}$ for the
-full-rank ESFT deltas; LoRA uses $\alpha=2r$. The frozen backbone runs in bf16 (fp16 on T4 GPUs) and
-all trainable tensors are kept in fp32. The validation set is evaluated every 200 steps and at
+full-rank ESFT deltas; LoRA uses $\alpha=2r$. The frozen backbone runs in fp16 with dynamic
+loss scaling and all trainable tensors are kept in fp32. The validation set is evaluated every 200 steps and at
 the end, and the adapter with the best mean validation macro-F1 is used for testing. No
 hyper-parameter search was performed: the values follow common practice for each method and
-are identical across tasks. Seed~0 runs were trained on an Apple M1 Pro (16\,GB, MPS backend);
-additional seeds were run on Kaggle T4 GPUs.
+are identical across tasks. Every configuration is trained with three seeds (0, 1, 2), which
+change the data order, the LoRA initialisation and, for ESFT-Random, the chosen experts. All
+runs use a single NVIDIA T4 (16\,GB) on Kaggle.
+
+\textbf{Padding in fp16.} Batches are right-padded. With Granite's default padding token
+(\texttt{<|endoftext|>}) the hidden states of padded positions overflow the fp16 range in the
+last layers. The prediction is read at the last real token, which never attends to padding, so
+inference is unaffected, but in the backward pass the zero gradient at these positions meets
+an infinite activation and produces NaN gradients in almost every step. Padding with an ordinary token removes
+the problem; a unit test checks that a padded example gets exactly the same logits as the
+same example alone.
 
 \subsection{Metrics}
 We report macro-F1 (primary, because label distributions are skewed in opposite directions
 across tasks) and accuracy per task, and their unweighted mean over the four financial tasks.
 Efficiency is measured by the number of trainable parameters, training time, peak accelerator
-memory and inference latency.
+memory and inference latency (batch 16, T4). Frozen-model baselines are deterministic and are
+evaluated once.
