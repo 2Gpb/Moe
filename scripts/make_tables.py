@@ -122,6 +122,7 @@ def main():
     if not runs.empty:
         eff = runs.groupby("method")[["trainable", "train_min", "peak_gb", "ms_per_example"]].mean()
         eff.index = [METHODS.get(m, m) for m in eff.index]
+        eff["trainable"] = eff["trainable"].map(human)
         with open(out / "efficiency_table.md", "w") as f:
             f.write(eff.round(2).to_markdown() + "\n")
 

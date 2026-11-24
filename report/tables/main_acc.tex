@@ -1,0 +1,20 @@
+\begin{table*}[t]
+\centering
+\caption{Test accuracy (\%).}
+\label{tab:acc}
+\begin{tabular}{l r c c c c c}
+\toprule
+\textbf{Method} & \textbf{Params} & \textbf{FPB} & \textbf{FiQA-SA} & \textbf{TFNS} & \textbf{Headlines} & \textbf{Mean} \\
+\midrule
+Zero-shot & 0 & 37.6 & 70.6 & 33.3 & 63.2 & 51.2 \\
+Few-shot (2/label) & 0 & 35.7 & 76.6 & 34.7 & 69.5 & 54.1 \\
+Router only & 786.43K & 54.6 $\pm$ 1.2 & 26.5 $\pm$ 6.7 & 47.9 $\pm$ 9.4 & 62.8 $\pm$ 2.1 & 47.9 $\pm$ 0.8 \\
+LoRA-Attn (r=16) & 2.75M & 84.6 $\pm$ 0.5 & 82.0 $\pm$ 0.5 & 85.4 $\pm$ 2.5 & 76.6 $\pm$ 6.1 & 82.1 $\pm$ 2.0 \\
+LoRA-Experts (r=1) & 2.75M & 82.8 $\pm$ 1.6 & 81.4 $\pm$ 3.4 & 84.4 $\pm$ 0.6 & 69.9 $\pm$ 0.5 & 79.6 $\pm$ 1.5 \\
+ESFT-Token & 128.97M & 86.5 $\pm$ 0.5 & 82.1 $\pm$ 0.9 & 87.8 $\pm$ 0.4 & 85.1 $\pm$ 1.2 & 85.4 $\pm$ 0.3 \\
+ESFT-Random (ctrl) & 128.97M & 84.6 $\pm$ 0.3 & 83.4 $\pm$ 0.9 & 86.4 $\pm$ 0.5 & 81.0 $\pm$ 3.7 & 83.9 $\pm$ 0.9 \\
+ESFT-Specific (ours) & 128.97M & 84.5 $\pm$ 0.5 & 82.3 $\pm$ 1.2 & 86.2 $\pm$ 0.7 & 74.5 $\pm$ 4.4 & 81.9 $\pm$ 1.1 \\
+Dense Qwen2.5-0.5B LoRA-Attn & 2.16M & 84.6 $\pm$ 0.6 & 79.7 $\pm$ 1.2 & 87.1 $\pm$ 1.2 & 90.3 $\pm$ 0.6 & \textbf{85.4 $\pm$ 0.5} \\
+\bottomrule
+\end{tabular}
+\end{table*}

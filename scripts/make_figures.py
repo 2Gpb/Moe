@@ -114,7 +114,8 @@ def fig_pareto():
         ax.errorbar(x, r["f1"], yerr=0 if np.isnan(r["std"]) else r["std"], fmt=marker, color=colour, ms=5,
                     elinewidth=1, capsize=2, label=fam.replace("_", "-") if fam not in seen else None)
         seen.add(fam)
-        ax.annotate(method.replace("base_", "").replace("_", "-"), (x, r["f1"]), xytext=(3, 3), textcoords="offset points", fontsize=5.5, color="#5f5e5a")
+        offset = (3, -7) if method == "base_0shot" else (3, 3)  # 0-shot and 2-shot sit on top of each other
+        ax.annotate(method.replace("base_", "").replace("_", "-"), (x, r["f1"]), xytext=offset, textcoords="offset points", fontsize=5.5, color="#5f5e5a")
     ax.set_xscale("log")
     ax.set_xlabel("trainable parameters (log; frozen = left edge)")
     ax.set_ylabel("mean test macro-F1 (%)")
