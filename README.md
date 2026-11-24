@@ -92,8 +92,8 @@ uv run python scripts/make_tables.py
 uv run python scripts/make_figures.py
 ```
 
-One training run takes ~35-45 min on an Apple M1 Pro (MPS, bf16) and fits in 16 GB.
-On Kaggle (2x T4, fp16) `notebooks/kaggle_grid.ipynb` runs two queues in parallel.
+All reported runs were trained on Kaggle (2x T4, fp16) with `notebooks/kaggle_grid.ipynb`, which runs
+two queues in parallel; one run takes 2.5-15 min on a T4 and the full grid about an hour.
 
 Inference with a trained adapter:
 
