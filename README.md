@@ -81,13 +81,17 @@ tests/            unit tests and an end-to-end training smoke test on a tiny ran
 
 ## Reproducing
 
+Requirements: Python 3.11+, [uv](https://docs.astral.sh/uv/), a GPU with 16 GB (a Kaggle T4 is enough).
+
 ```bash
+git clone https://github.com/2Gpb/Moe.git && cd Moe
 uv sync
 uv run pytest
 uv run python scripts/prepare_data.py                  # rebuilds data/splits (already committed)
 uv run python scripts/evaluate.py --config configs/base.yaml --shots 0
 uv run python scripts/analyze_routing.py               # routing statistics + ESFT relevance scores
-uv run python scripts/run_grid.py --seeds 0 1 2 --configs lora_attn router esft_token esft_specific
+uv run python scripts/run_grid.py --seeds 0 1 2 --configs lora_attn lora_experts_r1 router \
+    esft_token esft_random esft_specific dense_lora_attn
 uv run python scripts/make_tables.py
 uv run python scripts/make_figures.py
 ```
@@ -111,3 +115,7 @@ Report: `cd report && tectonic main.tex`.
   huge activations, padded positions overflow fp16 and every gradient turns into NaN.
 - On macOS with iCloud-synced folders the `.venv` files can get the `hidden` flag, which
   makes Python skip `.pth` files; the scripts therefore add `src/` to `sys.path` themselves.
+
+## License
+
+MIT, see `LICENSE`.
