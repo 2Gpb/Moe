@@ -73,7 +73,7 @@ src/finmoe/
   evaluation.py   predictions and metrics
 scripts/          prepare_data, train, run_grid, evaluate, analyze_routing, predict, make_tables, make_figures
 configs/          one YAML per experiment (inherits from base.yaml)
-notebooks/        exploration notebook and the Kaggle notebook for the multi-seed grid
+notebooks/        exploration notebook, Kaggle notebook for the multi-seed grid, short demo
 results/          metrics, predictions and routing statistics of every run (committed)
 report/           IEEE-format report (LaTeX)
 tests/            unit tests and an end-to-end training smoke test on a tiny random MoE
@@ -104,6 +104,9 @@ Inference with a trained adapter:
 ```bash
 uv run python scripts/predict.py --run runs/lora_attn_s0 --task fpb "Operating profit rose to EUR 13.1 mn from EUR 8.7 mn."
 ```
+
+A short end-to-end demo (frozen model, one ESFT run, predictions before and after) runs on a
+Kaggle T4 in about 15 minutes: `notebooks/demo.ipynb`.
 
 Report: `cd report && tectonic main.tex`.
 
