@@ -1,6 +1,7 @@
 \section{Results}
 
 \input{tables/main_f1}
+\input{tables/main_acc}
 
 \subsection{Main comparison}
 Table~\ref{tab:main} gives test macro-F1 for all methods. The frozen model is weak on every
@@ -26,7 +27,7 @@ decreases the mean macro-F1 to 33.3\%, below the frozen model. Its training loss
 (Fig.~\ref{fig:curves}), while its routing on the test set drifts far from the pre-trained one
 (Section~\ref{sec:routing}).
 
-Test accuracy (released with the per-run results) gives the same ranking: 85.4\% for both
+Test accuracy (Table~\ref{tab:acc}) gives the same ranking: 85.4\% for both
 ESFT-Token and the dense model, 83.9\% for ESFT-Random and 82.1\% for attention LoRA.
 
 \begin{figure}[t]
