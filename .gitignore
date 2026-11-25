@@ -4,13 +4,10 @@ __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
 .DS_Store
-.claude/
 
 /checkpoints/
-/runs/
 wandb/
 *.safetensors
-adapter.pt
 
 report/*.aux
 report/*.log
