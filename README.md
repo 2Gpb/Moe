@@ -114,6 +114,8 @@ Report: `cd report && tectonic main.tex`.
 
 - Adapter weights are saved to `runs/<name>/adapter.pt` whenever the validation macro-F1
   improves; only the trainable tensors are stored, the frozen backbone comes from the Hub.
+  The adapters of `lora_attn_s0` and `dense_lora_attn_s0` are included in `runs/`, so
+  `scripts/predict.py` works right after cloning; the ESFT adapters (~0.5 GB each) are not.
 - Batches are padded with an ordinary token, not `<|endoftext|>`: in Granite that token gets
   huge activations, padded positions overflow fp16 and every gradient turns into NaN.
 - On macOS with iCloud-synced folders the `.venv` files can get the `hidden` flag, which
