@@ -122,6 +122,56 @@ fine-tuned model (seed 0) on the test sets.}
 \label{fig:shift}
 \end{figure}
 
+\subsection{Error analysis}
+\label{sec:errors}
+Table~\ref{tab:recall} reports the recall of the classes that separate the methods, computed
+from the saved test predictions and averaged over seeds.
+
+\textbf{The frozen model ignores the neutral class.} Zero-shot, the model labels 0.1\% of the
+\fpb{} sentences as neutral, although neutral is the majority class (60\% of the data); neutral
+recall is 0.2\% on \fpb{} and 3.2\% on \tfns{}. This is the domain gap from the introduction in
+its simplest form: factual statements such as dates, volumes and announcements are read as
+positive or negative. Every method that adapts the network body raises neutral recall on
+\fpb{} and \tfns{} to 86--92\%, which accounts for most of the improvement on these two tasks.
+The router is the exception: it over-corrects and labels 86\% of the \fpb{} sentences as neutral.
+
+\textbf{\fiqa{} is limited by its neutral class.} Only 8\% of the \fiqa{} training posts (about
+60 examples) are neutral, and no method except the router, which over-predicts neutral
+everywhere, recovers this class: neutral recall stays between 4\% and 22\%. Since macro-F1
+weights the three classes equally, this caps \fiqa{} near 60--66\% for all methods, and the
+ranking on this task largely follows the neutral recall (ESFT-Token is the best with 22\%).
+
+\textbf{Headlines separates the methods through the minority class.} ``Yes'' answers are 32\%
+of the Headlines data. Methods that fail on Headlines mostly stop predicting them: expert LoRA
+recalls 2.5\% of them and predicts ``Yes'' for fewer than 1\% of the questions, ESFT-Specific
+recalls 22\%. ESFT-Token reaches 64\% and the dense model 77\%, which explains the dense
+model's lead on this task. The seed variance of attention LoRA and ESFT-Specific also comes from
+this class, and it is already visible on the validation set (for attention LoRA, Headlines
+validation macro-F1 is 75.7, 71.4 and 44.8 for the three seeds against 78.7, 70.2 and 51.1 on
+test), so it is caused by training rather than by checkpoint selection. Questions about
+headlines require relating a templated question to a short text, a different skill from
+sentiment; a model that adapts few parameters, or the wrong ones, learns the majority answer.
+
+\begin{table}[t]
+\centering
+\caption{Test recall (\%) of the neutral class and of ``Yes'' on Headlines, mean over seeds.}
+\label{tab:recall}
+\begin{tabular}{l c c c c}
+\toprule
+Method & \fpb{} neu. & \tfns{} neu. & \fiqa{} neu. & Headl. Yes \\
+\midrule
+Zero-shot & 0.2 & 3.2 & 5.6 & 10.1 \\
+Router only & 85.7 & 61.6 & 57.4 & 20.8 \\
+LoRA-Experts & 88.7 & 87.0 & 3.7 & 2.5 \\
+ESFT-Specific & 88.9 & 89.9 & 5.6 & 21.7 \\
+LoRA-Attn & 85.9 & 87.5 & 18.5 & 43.7 \\
+ESFT-Random & 88.7 & 90.2 & 7.4 & 50.4 \\
+ESFT-Token & 88.7 & 91.5 & 22.2 & 64.3 \\
+Dense LoRA-Attn & 88.3 & 91.4 & 11.1 & 77.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Efficiency}
 Table~\ref{tab:eff} reports the cost of one run on a T4. ESFT trains 47 times more parameters
 than attention LoRA, but the stored adapter is still only 9.7\% of the model, training takes
